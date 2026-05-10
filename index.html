@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dune: Arrakis First-Person Survival</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden; /* Hide scrollbars */
+            background-color: #000;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #f39c12;
+            text-align: center;
+            pointer-events: none; /* Let clicks pass through to the 3D canvas */
+            z-index: 10;
+        }
+
+        #blocker {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            pointer-events: auto;
+            cursor: pointer;
+            z-index: 20;
+        }
+
+        .instructions {
+            font-size: 18px;
+            line-height: 1.5;
+        }
+
+        .title {
+            font-size: 40px;
+            font-weight: bold;
+            color: #d35400;
+            margin-bottom: 20px;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 10px; height: 10px;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #hud {
+            position: absolute;
+            bottom: 20px; left: 20px;
+            font-size: 16px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-left: 3px solid #d35400;
+        }
+
+        /* NEW ADDITION: SPICE COUNTER STYLE */
+        #spice-ui {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            color: #ff9d00;
+            background: rgba(0,0,0,0.6);
+            padding: 10px 20px;
+            border: 1px solid #d35400;
+            text-shadow: 0 0 10px #ff5500;
+        }
+
+        /* NEW ADDITION: WORMSIGN WARNING */
+        #worm-warning {
+            position: absolute;
+            top: 15%;
+            font-size: 30px;
+            color: #ff3300;
+            font-weight: bold;
+            display: none;
+            text-shadow: 0 0 15px #000;
+            animation: blinker 0.5s linear infinite;
+        }
+        @keyframes blinker { 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div id="crosshair"></div>
+        <div id="hud">
+            Location: Deep Desert<br>
+            Suit Status: Optimal<br>
+            Spice Proximity: Detecting...
+        </div>
+        <div id="spice-ui">MELANGE COLLECTED: <span id="spice-score">0</span></div>
+        <div id="worm-warning">WORMSIGN DETECTED - FIND ROCKS!</div>
+    </div>
+
+    <div id="blocker">
+        <div>
+            <div class="title">Arrakis Exploration</div>
+            <div class="instructions">
+                <strong>Click to Enter the Desert</strong><br><br>
+                W, A, S, D = Move<br>
+                SPACE = Jump<br>
+                MOUSE = Look around<br>
+                ESC = Pause
+            </div>
+        </div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+        // --- Core Variables ---
+        let camera, scene, renderer, controls;
+        let geometry, material, terrain;
+        const objects = [];
+        let raycaster;
+
+        // Physics Variables
+        let moveForward = false;
+        let moveBackward = false;
+        let moveLeft = false;
+        let moveRight = false;
+        let canJump = false;
+
+        let prevTime = performance.now();
+        const velocity = new THREE.Vector3();
+        const direction = new THREE.Vector3();
+
+        // Environment Variables
+        let spiceParticles;
+        const clock = new THREE.Clock();
+
+        // NEW ADDITION: SPICE COLLECTION GLOBALS
+        let spiceScore = 0;
+        const spiceCrystals = [];
+
+        // NEW ADDITION: SANDWORM & ROCK GLOBALS
+        const rocks = [];
+        let sandworm = null;
+        let wormState = "idle"; // idle, wormsign, attack
+        let wormTimer = 0;
+        let wormSignParticles;
+        let clickRaycaster = new THREE.Raycaster();
+
+        init();
+        animate();
+
+        function init() {
+            // 1. Setup Scene and Fog (Atmosphere)
+            scene = new THREE.Scene();
+            // Create a dusty, orange/sand colored fog
+            scene.background = new THREE.Color(0xcc8855);
+            scene.fog = new THREE.FogExp2(0xcc8855, 0.004);
+
+            // 2. Setup Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1500);
+            camera.position.y = 10; // Player height
+
+            // 3. Setup Lighting (Arrakis Sun)
+            const ambientLight = new THREE.HemisphereLight(0xeeeeff, 0x777788, 0.5);
+            ambientLight.position.set(0.5, 1, 0.75);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffaa55, 1);
+            dirLight.position.set(100, 200, 50);
+            scene.add(dirLight);
+
+            // 4. Setup Controls (First Person)
+            controls = new PointerLockControls(camera, document.body);
+
+            const blocker = document.getElementById('blocker');
+            blocker.addEventListener('click', function () {
+                controls.lock();
+            });
+
+            controls.addEventListener('lock', function () {
+                blocker.style.display = 'none';
+            });
+
+            controls.addEventListener('unlock', function () {
+                blocker.style.display = 'flex';
+            });
+
+            scene.add(controls.getObject());
+
+            // Keydown/Keyup Event Listeners
+            const onKeyDown = function (event) {
+                switch (event.code) {
+                    case 'ArrowUp':
+                    case 'KeyW': moveForward = true; break;
+                    case 'ArrowLeft':
+                    case 'KeyA': moveLeft = true; break;
+                    case 'ArrowDown':
+                    case 'KeyS': moveBackward = true; break;
+                    case 'ArrowRight':
+                    case 'KeyD': moveRight = true; break;
+                    case 'Space':
+                        if (canJump === true) velocity.y += 350;
+                        canJump = false;
+                        break;
+                }
+            };
+
+            const onKeyUp = function (event) {
+                switch (event.code) {
+                    case 'ArrowUp':
+                    case 'KeyW': moveForward = false; break;
+                    case 'ArrowLeft':
+                    case 'KeyA': moveLeft = false; break;
+                    case 'ArrowDown':
+                    case 'KeyS': moveBackward = false; break;
+                    case 'ArrowRight':
+                    case 'KeyD': moveRight = false; break;
+                }
+            };
+
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+
+            raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 15);
+
+            // 5. Generate Procedural Sand Dunes (Terrain)
+            geometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
+            geometry.rotateX(-Math.PI / 2); // Lay the plane flat
+
+            // Manipulate vertices to create rolling dunes using Math.sin/cos
+            const positionAttribute = geometry.attributes.position;
+            for (let i = 0; i < positionAttribute.count; i++) {
+                const x = positionAttribute.getX(i);
+                const z = positionAttribute.getZ(i);
+                
+                // Combine different frequencies to make organic looking dunes
+                let y = Math.sin(x / 50) * Math.cos(z / 50) * 20;
+                y += Math.sin(x / 200) * Math.cos(z / 200) * 50;
+                
+                positionAttribute.setY(i, y);
+            }
+            
+            geometry.computeVertexNormals(); // Ensure lighting works correctly on the bumps
+
+            material = new THREE.MeshLambertMaterial({ 
+                color: 0xd4a373, // Sand color
+                wireframe: false 
+            });
+
+            terrain = new THREE.Mesh(geometry, material);
+            scene.add(terrain);
+            objects.push(terrain);
+
+            // 6. Generate Melange (Spice) Particles
+            const particleCount = 5000;
+            const particleGeometry = new THREE.BufferGeometry();
+            const particlePositions = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                particlePositions[i] = (Math.random() - 0.5) * 1000; // x
+                particlePositions[i + 1] = Math.random() * 50;      // y (floating height)
+                particlePositions[i + 2] = (Math.random() - 0.5) * 1000; // z
+            }
+
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+            
+            // Create a glowing orange material for the spice
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0xff5500,
+                size: 0.5,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+
+            spiceParticles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(spiceParticles);
+
+            // NEW ADDITION: GENERATE REALISTIC SPICE FLECKS
+            const crystalGeo = new THREE.DodecahedronGeometry(0.8, 0);
+            const crystalMat = new THREE.MeshStandardMaterial({ 
+                color: 0xff8800, 
+                emissive: 0xff4400,
+                roughness: 0,
+                metalness: 1
+            });
+            for(let i = 0; i < 40; i++) {
+                const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+                const x = (Math.random() - 0.5) * 1200;
+                const z = (Math.random() - 0.5) * 1200;
+                const y = Math.sin(x / 50) * Math.cos(z / 50) * 20 + Math.sin(x / 200) * Math.cos(z / 200) * 50;
+                crystal.position.set(x, y + 0.2, z); // Flusher to ground
+                crystal.rotation.set(Math.random(), Math.random(), Math.random());
+                scene.add(crystal);
+                spiceCrystals.push(crystal);
+            }
+
+            // NEW ADDITION: ROCK OUTCROPS (SAFE ZONES)
+            const rockMat = new THREE.MeshLambertMaterial({ color: 0x4a3a2a });
+            for(let i = 0; i < 15; i++) {
+                const rockSize = 10 + Math.random() * 15;
+                const rockGeo = new THREE.BoxGeometry(rockSize, rockSize * 2, rockSize);
+                const rock = new THREE.Mesh(rockGeo, rockMat);
+                const x = (Math.random() - 0.5) * 1000;
+                const z = (Math.random() - 0.5) * 1000;
+                const y = Math.sin(x / 50) * Math.cos(z / 50) * 20 + Math.sin(x / 200) * Math.cos(z / 200) * 50;
+                rock.position.set(x, y + rockSize / 2, z);
+                scene.add(rock);
+                rocks.push(rock);
+                objects.push(rock); // For raycasting collision
+            }
+
+            // NEW ADDITION: THE SANDWORM (SHAI-HULUD)
+            createSandworm();
+
+            // 7. Setup Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            window.addEventListener('resize', onWindowResize);
+            
+            // NEW ADDITION: CLICK TO HARVEST
+            document.addEventListener('mousedown', onMouseClick);
+        }
+
+        // NEW ADDITION: SANDWORM GENERATION
+        function createSandworm() {
+            sandworm = new THREE.Group();
+            const segmentCount = 20;
+            for(let i = 0; i < segmentCount; i++) {
+                const radius = 15 - (i * 0.5);
+                const segGeo = new THREE.TorusGeometry(radius, 4, 8, 16);
+                const segMat = new THREE.MeshLambertMaterial({ color: 0x3d2b1f });
+                const seg = new THREE.Mesh(segGeo, segMat);
+                seg.rotation.x = Math.PI / 2;
+                seg.position.z = i * 8;
+                sandworm.add(seg);
+            }
+            // Maw / Mouth
+            const mouthGeo = new THREE.CylinderGeometry(15, 15, 5, 12, 1, true);
+            const mouth = new THREE.Mesh(mouthGeo, new THREE.MeshBasicMaterial({color: 0x000000}));
+            mouth.rotation.x = Math.PI / 2;
+            mouth.position.z = -2;
+            sandworm.add(mouth);
+
+            sandworm.position.y = -100; // Start deep underground
+            scene.add(sandworm);
+
+            // Wormsign Particles
+            const signGeo = new THREE.BufferGeometry();
+            const signPos = new Float32Array(300 * 3);
+            signGeo.setAttribute('position', new THREE.BufferAttribute(signPos, 3));
+            wormSignParticles = new THREE.Points(signGeo, new THREE.PointsMaterial({color: 0xd4a373, size: 4, transparent: true, opacity: 0.5}));
+            scene.add(wormSignParticles);
+        }
+
+        function onMouseClick(event) {
+            if (!controls.isLocked) return;
+            clickRaycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+            const intersects = clickRaycaster.intersectObjects(spiceCrystals);
+            if (intersects.length > 0) {
+                const target = intersects[0].object;
+                if (target.visible) {
+                    target.visible = false;
+                    spiceScore += 50;
+                    document.getElementById('spice-score').innerText = spiceScore;
+                }
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- Game Loop (Physics and Rendering) ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const time = performance.now();
+
+            // Animate spice particles (drifting in the wind)
+            const positions = spiceParticles.geometry.attributes.position.array;
+            for(let i = 0; i < positions.length; i+=3) {
+                positions[i] += 0.05; // Blow along X axis
+                if(positions[i] > 500) positions[i] = -500; // Reset if blown too far
+            }
+            spiceParticles.geometry.attributes.position.needsUpdate = true;
+
+            if (controls.isLocked === true) {
+                // Determine time passed since last frame to make movement smooth
+                const delta = (time - prevTime) / 1000;
+
+                // Apply Friction/Drag to velocity
+                velocity.x -= velocity.x * 10.0 * delta;
+                velocity.z -= velocity.z * 10.0 * delta;
+                velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass / gravity strength
+
+                // Determine movement direction based on key states
+                direction.z = Number(moveForward) - Number(moveBackward);
+                direction.x = Number(moveRight) - Number(moveLeft);
+                direction.normalize(); // Ensures consistent movement speed in all directions
+
+                // Apply acceleration if moving
+                if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
+                if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
+
+                // Collision Detection with Terrain
+                raycaster.ray.origin.copy(controls.getObject().position);
+                raycaster.ray.origin.y -= 5; 
+                
+                const intersections = raycaster.intersectObjects(objects, false);
+                const onObject = intersections.length > 0;
+
+                // Stop falling if we hit the ground
+                if (onObject === true && velocity.y < 0) {
+                    velocity.y = Math.max(0, velocity.y);
+                    canJump = true;
+                }
+
+                // Apply final velocity to the player controls
+                controls.moveRight(-velocity.x * delta);
+                controls.moveForward(-velocity.z * delta);
+                controls.getObject().position.y += (velocity.y * delta);
+
+                // Prevent falling through the floor
+                if (controls.getObject().position.y < 10) {
+                    velocity.y = 0;
+                    controls.getObject().position.y = 10;
+                    canJump = true;
+                }
+
+                // NEW ADDITION: DUNE CLAMP (PREVENT FALLING)
+                const pPos = controls.getObject().position;
+                const dY = Math.sin(pPos.x/50)*Math.cos(pPos.z/50)*20 + Math.sin(pPos.x/200)*Math.cos(pPos.z/200)*50;
+                
+                // Check if we are on a rock
+                let onRock = false;
+                intersections.forEach(hit => { if(hit.object.geometry.type === "BoxGeometry") onRock = true; });
+
+                if (!onRock && pPos.y < dY + 8) {
+                    pPos.y = dY + 8;
+                    velocity.y = 0;
+                    canJump = true;
+                }
+
+                // NEW ADDITION: SANDWORM AI
+                updateSandworm(delta, pPos, dY, onRock);
+            }
+
+            prevTime = time;
+            renderer.render(scene, camera);
+        }
+
+        // NEW ADDITION: SANDWORM LIFECYCLE
+        function updateSandworm(delta, pPos, dY, onRock) {
+            wormTimer += delta;
+
+            if (wormState === "idle" && wormTimer > 20 && Math.random() < 0.01) {
+                wormState = "wormsign";
+                wormTimer = 0;
+                // Position wormsign near player
+                const angle = Math.random() * Math.PI * 2;
+                sandworm.position.set(pPos.x + Math.cos(angle)*100, -50, pPos.z + Math.sin(angle)*100);
+                document.getElementById('worm-warning').style.display = 'block';
+            }
+
+            if (wormState === "wormsign") {
+                // Shake Camera
+                camera.position.x += (Math.random()-0.5) * 0.5;
+                camera.position.y += (Math.random()-0.5) * 0.5;
+                
+                // Animate dust particles
+                const p = wormSignParticles.geometry.attributes.position.array;
+                for(let i=0; i<p.length; i+=3) {
+                    p[i] = sandworm.position.x + (Math.random()-0.5)*80;
+                    p[i+1] = dY + Math.random()*20;
+                    p[i+2] = sandworm.position.z + (Math.random()-0.5)*80;
+                }
+                wormSignParticles.geometry.attributes.position.needsUpdate = true;
+
+                if (wormTimer > 6) {
+                    wormState = "attack";
+                    wormTimer = 0;
+                }
+            }
+
+            if (wormState === "attack") {
+                // Lunge toward player
+                sandworm.lookAt(pPos.x, dY, pPos.z);
+                sandworm.position.lerp(new THREE.Vector3(pPos.x, dY + 10, pPos.z), 0.05);
+                
+                if (sandworm.position.distanceTo(pPos) < 20) {
+                    if (!onRock) {
+                        alert("The Desert has claimed you. Shai-Hulud has fed.");
+                        location.reload();
+                    }
+                }
+
+                if (wormTimer > 4) {
+                    wormState = "idle";
+                    wormTimer = 0;
+                    sandworm.position.y = -200;
+                    document.getElementById('worm-warning').style.display = 'none';
+                    // Clear particles
+                    const p = wormSignParticles.geometry.attributes.position.array;
+                    for(let i=0; i<p.length; i++) p[i] = 0;
+                    wormSignParticles.geometry.attributes.position.needsUpdate = true;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
