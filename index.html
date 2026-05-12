@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dune: Arrakis First-Person Survival</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             margin: 0;
@@ -123,7 +124,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
 
     <script type="importmap">
         {
@@ -548,28 +549,31 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
+        // --- UPDATE OTHER PLAYERS (Place inside your animate() function) ---
+        function updateMultiplayer(delta, time) {
+            otherPlayers.forEach((data) => {
+                // Smooth interpolation
+                data.mesh.position.lerp(new THREE.Vector3(data.targetPos.x, data.targetPos.y - 18, data.targetPos.z), 0.1);
+                data.mesh.rotation.y = THREE.MathUtils.lerp(data.mesh.rotation.y, data.targetRot, 0.1);
+
+                // Simple animation: if they are sandwalking, make them "wobble"
+                if (data.isSandwalking) {
+                    data.mesh.rotation.z = Math.sin(time * 0.005) * 0.1;
+                } else {
+                    data.mesh.rotation.z = 0;
+                }
+            });
+        }
 
         // --- Game Loop (Physics and Rendering) ---
         function animate() {
-            // --- UPDATE OTHER PLAYERS (Place inside your animate() function) ---
-            function updateMultiplayer(delta, time) {
-                otherPlayers.forEach((data) => {
-                    // Smooth interpolation
-                    data.mesh.position.lerp(new THREE.Vector3(data.targetPos.x, data.targetPos.y - 18, data.targetPos.z), 0.1);
-                    data.mesh.rotation.y = THREE.MathUtils.lerp(data.mesh.rotation.y, data.targetRot, 0.1);
 
-                    // Simple animation: if they are sandwalking, make them "wobble"
-                    if (data.isSandwalking) {
-                        data.mesh.rotation.z = Math.sin(time * 0.005) * 0.1;
-                    } else {
-                        data.mesh.rotation.z = 0;
-                    }
-                });
-            }
             requestAnimationFrame(animate);
 
             const time = performance.now();
-
+            const delta = (time - prevTime) / 1000;
+            
+            updateMultiplayer(delta, time);
             // Animate spice particles 
             const positions = spiceParticles.geometry.attributes.position.array;
             for(let i = 0; i < positions.length; i+=3) {
