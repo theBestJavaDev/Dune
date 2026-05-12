@@ -70,7 +70,7 @@
             border-left: 3px solid #d35400;
         }
 
-        /* NEW ADDITION: SPICE COUNTER STYLE */
+        /* SPICE COUNTER STYLE */
         #spice-ui {
             position: absolute;
             top: 20px;
@@ -83,7 +83,7 @@
             text-shadow: 0 0 10px #ff5500;
         }
 
-        /* NEW ADDITION: WORMSIGN WARNING */
+        /* WORMSIGN WARNING */
         #worm-warning {
             position: absolute;
             top: 15%;
@@ -157,11 +157,11 @@
         let spiceParticles;
         const clock = new THREE.Clock();
 
-        // NEW ADDITION: SPICE COLLECTION GLOBALS
+        // SPICE COLLECTION GLOBALS
         let spiceScore = 0;
         const spiceCrystals = [];
 
-        // NEW ADDITION: SANDWORM & ROCK GLOBALS
+        // SANDWORM & ROCK GLOBALS
         const rocks = [];
         let sandworm = null;
         let wormState = "idle"; // idle, wormsign, attack
@@ -169,13 +169,15 @@
         let wormSignParticles;
         let clickRaycaster = new THREE.Raycaster();
 
+        // GLOBAL SPICE SPARKLES
+        let sparkleSystem;
+
         init();
         animate();
 
         function init() {
             // 1. Setup Scene and Fog (Atmosphere)
             scene = new THREE.Scene();
-            // Create a dusty, orange/sand colored fog
             scene.background = new THREE.Color(0xcc8855);
             scene.fog = new THREE.FogExp2(0xcc8855, 0.004);
 
@@ -244,7 +246,7 @@
             document.addEventListener('keydown', onKeyDown);
             document.addEventListener('keyup', onKeyUp);
 
-            raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 15);
+            raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 20);
 
             // 5. Generate Procedural Sand Dunes (Terrain)
             geometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
@@ -256,17 +258,16 @@
                 const x = positionAttribute.getX(i);
                 const z = positionAttribute.getZ(i);
                 
-                // Combine different frequencies to make organic looking dunes
                 let y = Math.sin(x / 50) * Math.cos(z / 50) * 20;
                 y += Math.sin(x / 200) * Math.cos(z / 200) * 50;
                 
                 positionAttribute.setY(i, y);
             }
             
-            geometry.computeVertexNormals(); // Ensure lighting works correctly on the bumps
+            geometry.computeVertexNormals(); 
 
             material = new THREE.MeshLambertMaterial({ 
-                color: 0xd4a373, // Sand color
+                color: 0xd4a373, 
                 wireframe: false 
             });
 
@@ -287,7 +288,6 @@
 
             particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
             
-            // Create a glowing orange material for the spice
             const particleMaterial = new THREE.PointsMaterial({
                 color: 0xff5500,
                 size: 0.5,
@@ -299,7 +299,7 @@
             spiceParticles = new THREE.Points(particleGeometry, particleMaterial);
             scene.add(spiceParticles);
 
-            // NEW ADDITION: GENERATE REALISTIC SPICE FLECKS
+            // GENERATE REALISTIC SPICE FLECKS
             const crystalGeo = new THREE.DodecahedronGeometry(0.8, 0);
             const crystalMat = new THREE.MeshStandardMaterial({ 
                 color: 0xff8800, 
@@ -312,29 +312,94 @@
                 const x = (Math.random() - 0.5) * 1200;
                 const z = (Math.random() - 0.5) * 1200;
                 const y = Math.sin(x / 50) * Math.cos(z / 50) * 20 + Math.sin(x / 200) * Math.cos(z / 200) * 50;
-                crystal.position.set(x, y + 0.2, z); // Flusher to ground
+                crystal.position.set(x, y + 0.2, z); 
                 crystal.rotation.set(Math.random(), Math.random(), Math.random());
                 scene.add(crystal);
                 spiceCrystals.push(crystal);
             }
 
-            // NEW ADDITION: ROCK OUTCROPS (SAFE ZONES)
-            const rockMat = new THREE.MeshLambertMaterial({ color: 0x4a3a2a });
+            // NEUTRALIZED OLD ROCK GENERATIONS (Keeping code per Golden Rule, but nullifying effect)
+            const rockMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.9, flatShading: true });
             for(let i = 0; i < 15; i++) {
-                const rockSize = 10 + Math.random() * 15;
-                const rockGeo = new THREE.BoxGeometry(rockSize, rockSize * 2, rockSize);
+                const rockGeo = new THREE.DodecahedronGeometry(10, 0);
                 const rock = new THREE.Mesh(rockGeo, rockMat);
-                const x = (Math.random() - 0.5) * 1000;
-                const z = (Math.random() - 0.5) * 1000;
-                const y = Math.sin(x / 50) * Math.cos(z / 50) * 20 + Math.sin(x / 200) * Math.cos(z / 200) * 50;
-                rock.position.set(x, y + rockSize / 2, z);
+                rock.position.set(0, -9999, 0); // Buried safely underground
                 scene.add(rock);
-                rocks.push(rock);
-                objects.push(rock); // For raycasting collision
+            }
+            const obsidianMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, flatShading: true, roughness: 1 });
+            for(let i = 0; i < 20; i++) {
+                const g = new THREE.IcosahedronGeometry(15, 1);
+                const r = new THREE.Mesh(g, obsidianMat);
+                r.position.set(0, -9999, 0); // Buried safely underground
+                scene.add(r);
+            }
+            const smoothRockMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.9, metalness: 0.1 });
+            for(let i = 0; i < 25; i++) {
+                const smoothGeo = new THREE.SphereGeometry(15, 32, 32); 
+                const rock = new THREE.Mesh(smoothGeo, smoothRockMat);
+                rock.position.set(0, -9999, 0); // Buried safely underground
+                scene.add(rock);
             }
 
-            // NEW ADDITION: THE SANDWORM (SHAI-HULUD)
+            // *** NEW: RARE, MASSIVE TEXTURED PLATEAUS ***
+            const plateauMat = new THREE.MeshStandardMaterial({ 
+                color: 0x362c24, // Dusty rock color
+                roughness: 1.0, 
+                metalness: 0.0,
+                flatShading: true // Exposes the jagged vertex displacement
+            });
+
+            // Extremely rare (only 4 on the whole map)
+            for(let i = 0; i < 4; i++) {
+                // Massive base radius
+                const rSize = 80 + Math.random() * 50; 
+                // High detail icosahedron to allow for vertex displacement
+                const plateauGeo = new THREE.IcosahedronGeometry(rSize, 4); 
+                
+                // Displacement Loop to add craggy texture
+                const pos = plateauGeo.attributes.position;
+                for(let j=0; j<pos.count; j++) {
+                    const vx = pos.getX(j);
+                    const vy = pos.getY(j);
+                    const vz = pos.getZ(j);
+                    // Procedural noise displacement
+                    const noise = Math.sin(vx*0.15)*Math.cos(vz*0.15)*4 + Math.sin(vy*0.1)*3;
+                    pos.setXYZ(j, vx + noise, vy + noise, vz + noise);
+                }
+                plateauGeo.computeVertexNormals();
+
+                const rock = new THREE.Mesh(plateauGeo, plateauMat);
+                
+                const rx = (Math.random() - 0.5) * 1600;
+                const rz = (Math.random() - 0.5) * 1600;
+                const ry = Math.sin(rx / 50) * Math.cos(rz / 50) * 20 + Math.sin(rx / 200) * Math.cos(rz / 200) * 50;
+                
+                // Position, scale, and squash the Y axis to create a flat-ish plateau
+                rock.position.set(rx, ry - 10, rz);
+                rock.scale.set(1, 0.35 + Math.random() * 0.1, 1); 
+                rock.rotation.y = Math.random() * Math.PI;
+
+                scene.add(rock);
+                objects.push(rock); // Added to raycasting
+            }
+
+            // THE SANDWORM (SHAI-HULUD)
             createSandworm();
+
+            // GLOBAL SPARKLE SYSTEM
+            const sparkleGeo = new THREE.BufferGeometry();
+            const sparkleCount = 8000;
+            const sparklePos = new Float32Array(sparkleCount * 3);
+            for(let i=0; i<sparkleCount*3; i++) sparklePos[i] = (Math.random() - 0.5) * 2000;
+            sparkleGeo.setAttribute('position', new THREE.BufferAttribute(sparklePos, 3));
+            sparkleSystem = new THREE.Points(sparkleGeo, new THREE.PointsMaterial({
+                color: 0xffcc00,
+                size: 0.15,
+                transparent: true,
+                opacity: 0.5,
+                blending: THREE.AdditiveBlending
+            }));
+            scene.add(sparkleSystem);
 
             // 7. Setup Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -343,12 +408,9 @@
             document.body.appendChild(renderer.domElement);
 
             window.addEventListener('resize', onWindowResize);
-            
-            // NEW ADDITION: CLICK TO HARVEST
             document.addEventListener('mousedown', onMouseClick);
         }
 
-        // NEW ADDITION: SANDWORM GENERATION
         function createSandworm() {
             sandworm = new THREE.Group();
             const segmentCount = 20;
@@ -405,98 +467,108 @@
 
             const time = performance.now();
 
-            // Animate spice particles (drifting in the wind)
+            // Animate spice particles 
             const positions = spiceParticles.geometry.attributes.position.array;
             for(let i = 0; i < positions.length; i+=3) {
-                positions[i] += 0.05; // Blow along X axis
-                if(positions[i] > 500) positions[i] = -500; // Reset if blown too far
+                positions[i] += 0.05; 
+                if(positions[i] > 500) positions[i] = -500; 
             }
             spiceParticles.geometry.attributes.position.needsUpdate = true;
 
+            // SPARKLE EFFECT ANIMATION
+            sparkleSystem.rotation.y += 0.001;
+            sparkleSystem.material.opacity = 0.3 + Math.sin(time * 0.005) * 0.2;
+
             if (controls.isLocked === true) {
-                // Determine time passed since last frame to make movement smooth
                 const delta = (time - prevTime) / 1000;
 
-                // Apply Friction/Drag to velocity
+                // Friction/Drag
                 velocity.x -= velocity.x * 10.0 * delta;
                 velocity.z -= velocity.z * 10.0 * delta;
-                velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass / gravity strength
+                
+                // Real Gravity
+                velocity.y -= 9.8 * 100.0 * delta; 
 
-                // Determine movement direction based on key states
+                // Movement Input
                 direction.z = Number(moveForward) - Number(moveBackward);
                 direction.x = Number(moveRight) - Number(moveLeft);
-                direction.normalize(); // Ensures consistent movement speed in all directions
+                direction.normalize(); 
 
-                // Apply acceleration if moving
                 if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
                 if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
 
-                // Collision Detection with Terrain
-                raycaster.ray.origin.copy(controls.getObject().position);
-                raycaster.ray.origin.y -= 5; 
-                
-                const intersections = raycaster.intersectObjects(objects, false);
-                const onObject = intersections.length > 0;
-
-                // Stop falling if we hit the ground
-                if (onObject === true && velocity.y < 0) {
-                    velocity.y = Math.max(0, velocity.y);
-                    canJump = true;
-                }
-
-                // Apply final velocity to the player controls
+                // Apply initial translation
                 controls.moveRight(-velocity.x * delta);
                 controls.moveForward(-velocity.z * delta);
                 controls.getObject().position.y += (velocity.y * delta);
 
-                // Prevent falling through the floor
-                if (controls.getObject().position.y < 10) {
-                    velocity.y = 0;
-                    controls.getObject().position.y = 10;
-                    canJump = true;
-                }
-
-                // NEW ADDITION: DUNE CLAMP (PREVENT FALLING)
+                // --- NEW UNIFIED GROUND COLLISION SYSTEM ---
                 const pPos = controls.getObject().position;
+                
+                // 1. Calculate Sand Dune Floor mathematically
                 const dY = Math.sin(pPos.x/50)*Math.cos(pPos.z/50)*20 + Math.sin(pPos.x/200)*Math.cos(pPos.z/200)*50;
                 
-                // Check if we are on a rock
+                let targetFloorHeight = dY;
                 let onRock = false;
-                intersections.forEach(hit => { if(hit.object.geometry.type === "BoxGeometry") onRock = true; });
 
-                if (!onRock && pPos.y < dY + 8) {
-                    pPos.y = dY + 8;
+                // 2. Cast ray downward to check for rocks
+                // Cast from slightly above the feet to ensure we read slopes accurately
+                raycaster.ray.origin.copy(pPos);
+                raycaster.ray.origin.y = pPos.y; 
+                
+                const intersections = raycaster.intersectObjects(objects, false);
+                if (intersections.length > 0) {
+                    const hitPoint = intersections[0].point.y;
+                    if (hitPoint > targetFloorHeight) {
+                        targetFloorHeight = hitPoint;
+                        // Identify if the hit object is a rock (Updated to include new Icosahedron Plateaus)
+                        if (intersections[0].object.geometry.type === "SphereGeometry" || intersections[0].object.geometry.type === "IcosahedronGeometry") {
+                            onRock = true;
+                        }
+                    }
+                }
+
+                // 3. Evaluate Landing and Jumping Mechanics
+                const playerFeetY = pPos.y - 8; // The camera is exactly 8 units above the "feet"
+
+                // Hard Floor Catch (Prevents falling through)
+                if (playerFeetY <= targetFloorHeight) {
+                    pPos.y = targetFloorHeight + 8;
+                    velocity.y = 0;
+                    canJump = true;
+                }
+                // Step-Down Margin (Fixes levitation without ruining jumps)
+                // If the player is falling (velocity <= 0) and within 3 units of the floor, snap them down
+                else if (playerFeetY > targetFloorHeight && playerFeetY < targetFloorHeight + 3 && velocity.y <= 0) {
+                    pPos.y = targetFloorHeight + 8;
                     velocity.y = 0;
                     canJump = true;
                 }
 
-                // NEW ADDITION: SANDWORM AI
-                updateSandworm(delta, pPos, dY, onRock);
+                // SANDWORM AI
+                updateSandworm(delta, pPos, targetFloorHeight, onRock);
             }
 
             prevTime = time;
             renderer.render(scene, camera);
         }
 
-        // NEW ADDITION: SANDWORM LIFECYCLE
+        // SANDWORM LIFECYCLE
         function updateSandworm(delta, pPos, dY, onRock) {
             wormTimer += delta;
 
             if (wormState === "idle" && wormTimer > 20 && Math.random() < 0.01) {
                 wormState = "wormsign";
                 wormTimer = 0;
-                // Position wormsign near player
                 const angle = Math.random() * Math.PI * 2;
                 sandworm.position.set(pPos.x + Math.cos(angle)*100, -50, pPos.z + Math.sin(angle)*100);
                 document.getElementById('worm-warning').style.display = 'block';
             }
 
             if (wormState === "wormsign") {
-                // Shake Camera
                 camera.position.x += (Math.random()-0.5) * 0.5;
                 camera.position.y += (Math.random()-0.5) * 0.5;
                 
-                // Animate dust particles
                 const p = wormSignParticles.geometry.attributes.position.array;
                 for(let i=0; i<p.length; i+=3) {
                     p[i] = sandworm.position.x + (Math.random()-0.5)*80;
@@ -512,7 +584,6 @@
             }
 
             if (wormState === "attack") {
-                // Lunge toward player
                 sandworm.lookAt(pPos.x, dY, pPos.z);
                 sandworm.position.lerp(new THREE.Vector3(pPos.x, dY + 10, pPos.z), 0.05);
                 
@@ -528,7 +599,6 @@
                     wormTimer = 0;
                     sandworm.position.y = -200;
                     document.getElementById('worm-warning').style.display = 'none';
-                    // Clear particles
                     const p = wormSignParticles.geometry.attributes.position.array;
                     for(let i=0; i<p.length; i++) p[i] = 0;
                     wormSignParticles.geometry.attributes.position.needsUpdate = true;
