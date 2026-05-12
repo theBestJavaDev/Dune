@@ -123,6 +123,8 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <script type="importmap">
         {
             "imports": {
@@ -133,6 +135,55 @@
     </script>
 
     <script type="module">
+        // --- MULTIPLAYER CONSTANTS ---
+        // Replace with your actual project credentials
+        const supabaseClient = supabase.createClient('https://clbjiyokjmovijgwybyu.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsYmppeW9ram1vdmlqZ3d5Ynl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNTQyMzEsImV4cCI6MjA5MDgzMDIzMX0.EY8uZZN8hEyncJoi-rswxnKeaeIBTuF_xkwBu-yvF7c');
+        const otherPlayers = new Map();
+        const myId = Math.random().toString(36).substring(7);
+
+        // --- HUMAN MESH FACTORY ---
+        function createHumanMesh() {
+           const group = new THREE.Group();
+           const mat = new THREE.MeshLambertMaterial({ color: 0x5d4037 }); // Stillsuit-ish brown/grey
+
+           // Head
+            const head = new THREE.Mesh(new THREE.SphereGeometry(2, 8, 8), mat);
+            head.position.y = 16;
+            group.add(head);
+
+            // Torso
+           const torso = new THREE.Mesh(new THREE.BoxGeometry(4, 8, 2), mat);
+           torso.position.y = 11;
+            group.add(torso);
+
+           // Arms
+           const armGeo = new THREE.BoxGeometry(1, 7, 1);
+           const leftArm = new THREE.Mesh(armGeo, mat);
+           leftArm.position.set(-2.5, 11, 0);
+           group.add(leftArm);
+
+          const rightArm = new THREE.Mesh(armGeo, mat);
+           rightArm.position.set(2.5, 11, 0);
+          group.add(rightArm);
+
+          // Legs
+          const legGeo = new THREE.BoxGeometry(1.5, 8, 1.5);
+           const leftLeg = new THREE.Mesh(legGeo, mat);
+            leftLeg.position.set(-1, 4, 0);
+            group.add(leftLeg);
+
+         const rightLeg = new THREE.Mesh(legGeo, mat);
+          rightLeg.position.set(1, 4, 0);
+          group.add(rightLeg);
+
+         return group;
+        }
+
+
+
+
+
+
         import * as THREE from 'three';
         import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
@@ -176,6 +227,43 @@
         animate();
 
         function init() {
+            // --- NETWORK INITIALIZATION (Place inside your init() function) ---
+            const channel = supabaseClient.channel('arrakis_room', {
+                config: { broadcast: { self: false } }
+            });
+
+            channel.on('broadcast', { event: 'move' }, ({ payload }) => {
+                if (!otherPlayers.has(payload.id)) {
+                    const mesh = createHumanMesh();
+                    scene.add(mesh);
+                    otherPlayers.set(payload.id, { 
+                       mesh: mesh, 
+                        targetPos: new THREE.Vector3(), 
+                        targetRot: 0,
+                        isSandwalking: false 
+                    });
+                }
+
+                const data = otherPlayers.get(payload.id);
+                data.targetPos.set(payload.pos.x, payload.pos.y, payload.pos.z);
+                data.targetRot = payload.rot;
+                data.isSandwalking = payload.isSandwalking;
+            }).subscribe();
+            // --- BROADCAST LOOP (Place inside your init() function) ---
+            setInterval(() => {
+                if (controls.isLocked) {
+                    channel.send({
+                        type: 'broadcast',
+                        event: 'move',
+                        payload: {
+                            id: myId,
+                            pos: camera.position,
+                            rot: camera.rotation.y,
+                            isSandwalking: moveShift // Tells others if you are doing the Fremen walk
+                        }
+                    });
+                }
+            }, 50);
             // 1. Setup Scene and Fog (Atmosphere)
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xcc8855);
@@ -463,6 +551,21 @@
 
         // --- Game Loop (Physics and Rendering) ---
         function animate() {
+            // --- UPDATE OTHER PLAYERS (Place inside your animate() function) ---
+            function updateMultiplayer(delta, time) {
+                otherPlayers.forEach((data) => {
+                    // Smooth interpolation
+                    data.mesh.position.lerp(new THREE.Vector3(data.targetPos.x, data.targetPos.y - 18, data.targetPos.z), 0.1);
+                    data.mesh.rotation.y = THREE.MathUtils.lerp(data.mesh.rotation.y, data.targetRot, 0.1);
+
+                    // Simple animation: if they are sandwalking, make them "wobble"
+                    if (data.isSandwalking) {
+                        data.mesh.rotation.z = Math.sin(time * 0.005) * 0.1;
+                    } else {
+                        data.mesh.rotation.z = 0;
+                    }
+                });
+            }
             requestAnimationFrame(animate);
 
             const time = performance.now();
