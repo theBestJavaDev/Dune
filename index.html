@@ -618,100 +618,87 @@
 
         // --- Game Loop (Physics and Rendering) ---
         function animate() {
-
             requestAnimationFrame(animate);
 
             const time = performance.now();
-            const delta = (time - prevTime) / 1000;
-            
-            if (controls.isLocked) {
+            // Use a fixed delta if the tab was inactive to prevent physics explosions
+            const delta = Math.min((time - prevTime) / 1000, 0.1);
+    
+            // --- ALWAYS RUN (Even if menu is open) ---
+            // This ensures you actually see the game world before clicking play
+            renderer.render(scene, camera);
+    
+            // Update multiplayer even if we are in the menu so the world looks alive
+            if (typeof otherPlayers !== 'undefined') {
                 updateMultiplayer(delta, time);
-                updateMinimap();
-                
-            // Animate spice particles 
-            const positions = spiceParticles.geometry.attributes.position.array;
-            for(let i = 0; i < positions.length; i+=3) {
-                positions[i] += 0.05; 
-                if(positions[i] > 500) positions[i] = -500; 
             }
-            spiceParticles.geometry.attributes.position.needsUpdate = true;
 
-            // SPARKLE EFFECT ANIMATION
-            sparkleSystem.rotation.y += 0.001;
-            sparkleSystem.material.opacity = 0.3 + Math.sin(time * 0.005) * 0.2;
-
+            // --- ONLY RUN WHEN PLAYING ---
             if (controls.isLocked === true) {
-                const delta = (time - prevTime) / 1000;
+                // 1. Particle Animations
+                const positions = spiceParticles.geometry.attributes.position.array;
+                for(let i = 0; i < positions.length; i+=3) {
+                    positions[i] += 0.05; 
+                    if(positions[i] > 500) positions[i] = -500; 
+                }
+                spiceParticles.geometry.attributes.position.needsUpdate = true;
+        
+                sparkleSystem.rotation.y += 0.001;
+                sparkleSystem.material.opacity = 0.3 + Math.sin(time * 0.005) * 0.2;
 
-                // Friction/Drag
+                // 2. Physics & Movement
                 velocity.x -= velocity.x * 10.0 * delta;
                 velocity.z -= velocity.z * 10.0 * delta;
-                
-                // Real Gravity
                 velocity.y -= 9.8 * 100.0 * delta; 
 
-                // Movement Input
                 direction.z = Number(moveForward) - Number(moveBackward);
                 direction.x = Number(moveRight) - Number(moveLeft);
                 direction.normalize(); 
-
+        
                 if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
                 if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
 
-                // Apply initial translation
                 controls.moveRight(-velocity.x * delta);
                 controls.moveForward(-velocity.z * delta);
                 controls.getObject().position.y += (velocity.y * delta);
 
-                // --- NEW UNIFIED GROUND COLLISION SYSTEM ---
+                // 3. Ground Collision Logic
                 const pPos = controls.getObject().position;
-                
-                // 1. Calculate Sand Dune Floor mathematically
                 const dY = Math.sin(pPos.x/50)*Math.cos(pPos.z/50)*20 + Math.sin(pPos.x/200)*Math.cos(pPos.z/200)*50;
-                
+        
                 let targetFloorHeight = dY;
                 let onRock = false;
 
-                // 2. Cast ray downward to check for rocks
-                // Cast from slightly above the feet to ensure we read slopes accurately
                 raycaster.ray.origin.copy(pPos);
-                raycaster.ray.origin.y = pPos.y; 
-                
                 const intersections = raycaster.intersectObjects(objects, false);
+        
                 if (intersections.length > 0) {
                     const hitPoint = intersections[0].point.y;
                     if (hitPoint > targetFloorHeight) {
                         targetFloorHeight = hitPoint;
-                        // Identify if the hit object is a rock (Updated to include new Icosahedron Plateaus)
-                        if (intersections[0].object.geometry.type === "SphereGeometry" || intersections[0].object.geometry.type === "IcosahedronGeometry") {
+                        // Detect if it's a plateau/rock
+                        if (intersections[0].object.geometry.type.includes("Icosahedron") || 
+                            intersections[0].object.geometry.type.includes("Sphere")) {
                             onRock = true;
                         }
                     }
                 }
 
-                // 3. Evaluate Landing and Jumping Mechanics
-                const playerFeetY = pPos.y - 8; // The camera is exactly 8 units above the "feet"
-
-                // Hard Floor Catch (Prevents falling through)
-                if (playerFeetY <= targetFloorHeight) {
-                    pPos.y = targetFloorHeight + 8;
+                // Snap to floor
+                if (pPos.y < targetFloorHeight + 8) {
                     velocity.y = 0;
-                    canJump = true;
-                }
-                // Step-Down Margin (Fixes levitation without ruining jumps)
-                // If the player is falling (velocity <= 0) and within 3 units of the floor, snap them down
-                else if (playerFeetY > targetFloorHeight && playerFeetY < targetFloorHeight + 3 && velocity.y <= 0) {
                     pPos.y = targetFloorHeight + 8;
-                    velocity.y = 0;
                     canJump = true;
                 }
 
-                // SANDWORM AI
+                // 4. Update Sandworm
                 updateSandworm(delta, pPos, targetFloorHeight, onRock);
+        
+                // 5. Update UI
+                updateMinimap();
             }
 
             prevTime = time;
-            renderer.render(scene, camera);
         }
 
         // SANDWORM LIFECYCLE
