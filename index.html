@@ -123,6 +123,26 @@
             </div>
         </div>
     </div>
+    <div id="minimap" style="
+        position: absolute; 
+        bottom: 20px; 
+        right: 20px; 
+        width: 150px; 
+        height: 150px; 
+        background: rgba(0, 0, 0, 0.5); 
+        border: 2px solid #d35400; 
+        border-radius: 50%; 
+        overflow: hidden; 
+        z-index: 15;">
+        <div style="
+            position: absolute; 
+            top: 50%; left: 50%; 
+            width: 6px; height: 6px; 
+            background: #00ff00; 
+            border-radius: 50%; 
+            transform: translate(-50%, -50%);"></div>
+        <div id="player-dots"></div>
+    </div>
 
     
 
@@ -227,6 +247,42 @@
 
         init();
         animate();
+
+        // Add this near your other functions
+        function updateMinimap() {
+            const dotContainer = document.getElementById('player-dots');
+            dotContainer.innerHTML = ''; // Clear old dots
+
+            const MAP_SCALE = 0.2; // Adjust this to see further (smaller #) or closer (larger #)
+            const centerX = 75; // Half of minimap width
+            const centerY = 75; // Half of minimap height
+
+            otherPlayers.forEach((data) => {
+                // Calculate relative distance from you to the other player
+                const relX = (data.targetPos.x - camera.position.x) * MAP_SCALE;
+                const relZ = (data.targetPos.z - camera.position.z) * MAP_SCALE;
+
+                // Calculate distance from center to keep dots inside the circle
+                const dist = Math.sqrt(relX * relX + relZ * relZ);
+        
+                // Only draw if they are within the minimap radius (75px)
+                if (dist < 70) {
+                    const dot = document.createElement('div');
+                    dot.style.position = 'absolute';
+                    dot.style.width = '6px';
+                    dot.style.height = '6px';
+                    dot.style.background = 'red';
+                    dot.style.borderRadius = '50%';
+            
+                    // Position the dot relative to the center
+                    dot.style.left = (centerX + relX) + 'px';
+                    dot.style.top = (centerY + relZ) + 'px';
+                    dot.style.transform = 'translate(-50%, -50%)';
+            
+                    dotContainer.appendChild(dot);
+                }
+            });
+        }
 
         function init() {
             // --- NETWORK INITIALIZATION (Place inside your init() function) ---
@@ -568,7 +624,10 @@
             const time = performance.now();
             const delta = (time - prevTime) / 1000;
             
-            updateMultiplayer(delta, time);
+            if (controls.isLocked) {
+                updateMultiplayer(delta, time);
+                updateMinimap();
+                
             // Animate spice particles 
             const positions = spiceParticles.geometry.attributes.position.array;
             for(let i = 0; i < positions.length; i+=3) {
