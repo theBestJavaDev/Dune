@@ -22,7 +22,7 @@
             align-items: center;
             color: #f39c12;
             text-align: center;
-            pointer-events: none; /* Let clicks pass through to the 3D canvas */
+            pointer-events: none;
             z-index: 10;
         }
 
@@ -71,7 +71,6 @@
             border-left: 3px solid #d35400;
         }
 
-        /* SPICE COUNTER STYLE */
         #spice-ui {
             position: absolute;
             top: 20px;
@@ -84,7 +83,6 @@
             text-shadow: 0 0 10px #ff5500;
         }
 
-        /* WORMSIGN WARNING */
         #worm-warning {
             position: absolute;
             top: 15%;
@@ -105,7 +103,8 @@
         <div id="hud">
             Location: Deep Desert<br>
             Suit Status: Optimal<br>
-            Spice Proximity: Detecting...
+            Spice Proximity: Detecting...<br>
+            Online Players: 1
         </div>
         <div id="spice-ui">MELANGE COLLECTED: <span id="spice-score">0</span></div>
         <div id="worm-warning">WORMSIGN DETECTED - FIND ROCKS!</div>
@@ -144,8 +143,6 @@
         <div id="player-dots"></div>
     </div>
 
-    
-
     <script type="importmap">
         {
             "imports": {
@@ -156,28 +153,23 @@
     </script>
 
     <script type="module">
-        // --- MULTIPLAYER CONSTANTS ---
-        // Replace with your actual project credentials
-        const supabaseClient = supabase.createClient('https://clbjiyokjmovijgwybyu.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsYmppeW9ram1vdmlqZ3d5Ynl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNTQyMzEsImV4cCI6MjA5MDgzMDIzMX0.EY8uZZN8hEyncJoi-rswxnKeaeIBTuF_xkwBu-yvF7c');
+        const { createClient } = supabase;
+        const supabaseClient = createClient('https://clbjiyokjmovijgwybyu.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsYmppeW9ram1vdmlqZ3d5Ynl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNTQyMzEsImV4cCI6MjA5MDgzMDIzMX0.EY8uZZN8hEyncJoi-rswxnKeaeIBTuF_xkwBu-yvF7c');
         const otherPlayers = new Map();
         const myId = Math.random().toString(36).substring(7);
 
-        // --- HUMAN MESH FACTORY ---
         function createHumanMesh() {
            const group = new THREE.Group();
-           const mat = new THREE.MeshLambertMaterial({ color: 0x5d4037 }); // Stillsuit-ish brown/grey
+           const mat = new THREE.MeshLambertMaterial({ color: 0x5d4037 });
 
-           // Head
             const head = new THREE.Mesh(new THREE.SphereGeometry(2, 8, 8), mat);
             head.position.y = 16;
             group.add(head);
 
-            // Torso
            const torso = new THREE.Mesh(new THREE.BoxGeometry(4, 8, 2), mat);
            torso.position.y = 11;
-            group.add(torso);
+           group.add(torso);
 
-           // Arms
            const armGeo = new THREE.BoxGeometry(1, 7, 1);
            const leftArm = new THREE.Mesh(armGeo, mat);
            leftArm.position.set(-2.5, 11, 0);
@@ -187,7 +179,6 @@
            rightArm.position.set(2.5, 11, 0);
           group.add(rightArm);
 
-          // Legs
           const legGeo = new THREE.BoxGeometry(1.5, 8, 1.5);
            const leftLeg = new THREE.Mesh(legGeo, mat);
             leftLeg.position.set(-1, 4, 0);
@@ -200,21 +191,14 @@
          return group;
         }
 
-
-
-
-
-
         import * as THREE from 'three';
         import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
-        // --- Core Variables ---
         let camera, scene, renderer, controls;
         let geometry, material, terrain;
         const objects = [];
         let raycaster;
 
-        // Physics Variables
         let moveForward = false;
         let moveBackward = false;
         let moveLeft = false;
@@ -226,112 +210,193 @@
         const velocity = new THREE.Vector3();
         const direction = new THREE.Vector3();
 
-        // Environment Variables
         let spiceParticles;
         const clock = new THREE.Clock();
 
-        // SPICE COLLECTION GLOBALS
         let spiceScore = 0;
         const spiceCrystals = [];
 
-        // SANDWORM & ROCK GLOBALS
         const rocks = [];
         let sandworm = null;
-        let wormState = "idle"; // idle, wormsign, attack
+        let wormState = "idle";
         let wormTimer = 0;
         let wormSignParticles;
         let clickRaycaster = new THREE.Raycaster();
 
-        // GLOBAL SPICE SPARKLES
         let sparkleSystem;
+        let presenceChannel = null;
+        let onlinePlayerCount = 1;
 
         init();
         animate();
 
-        // Add this near your other functions
+        function updatePlayerCountHUD() {
+            const hud = document.getElementById('hud');
+            hud.innerHTML =
+                `Location: Deep Desert<br>` +
+                `Suit Status: Optimal<br>` +
+                `Spice Proximity: Detecting...<br>` +
+                `Online Players: ${onlinePlayerCount}`;
+        }
+
         function updateMinimap() {
             const dotContainer = document.getElementById('player-dots');
-            dotContainer.innerHTML = ''; // Clear old dots
+            dotContainer.innerHTML = '';
 
-            const MAP_SCALE = 0.2; // Adjust this to see further (smaller #) or closer (larger #)
-            const centerX = 75; // Half of minimap width
-            const centerY = 75; // Half of minimap height
+            const MAP_SCALE = 0.2;
+            const centerX = 75;
+            const centerY = 75;
 
             otherPlayers.forEach((data) => {
-                // Calculate relative distance from you to the other player
                 const relX = (data.targetPos.x - camera.position.x) * MAP_SCALE;
                 const relZ = (data.targetPos.z - camera.position.z) * MAP_SCALE;
-
-                // Calculate distance from center to keep dots inside the circle
                 const dist = Math.sqrt(relX * relX + relZ * relZ);
-        
-                // Only draw if they are within the minimap radius (75px)
+
                 if (dist < 70) {
                     const dot = document.createElement('div');
                     dot.style.position = 'absolute';
                     dot.style.width = '6px';
                     dot.style.height = '6px';
-                    dot.style.background = 'red';
+                    dot.style.background = data.isSandwalking ? '#ffd166' : 'red';
                     dot.style.borderRadius = '50%';
-            
-                    // Position the dot relative to the center
                     dot.style.left = (centerX + relX) + 'px';
                     dot.style.top = (centerY + relZ) + 'px';
                     dot.style.transform = 'translate(-50%, -50%)';
-            
                     dotContainer.appendChild(dot);
                 }
             });
         }
 
-        function init() {
-            // --- NETWORK INITIALIZATION (Place inside your init() function) ---
-            const channel = supabaseClient.channel('arrakis_room', {
-                config: { broadcast: { self: false } }
+        function syncPresenceToMinimap() {
+            updateMinimap();
+        }
+
+        function initPresenceMultiplayer() {
+            presenceChannel = supabaseClient.channel('arrakis_room', {
+                config: {
+                    presence: { key: myId },
+                    broadcast: { self: false }
+                }
             });
 
-            channel.on('broadcast', { event: 'move' }, ({ payload }) => {
-                if (!otherPlayers.has(payload.id)) {
-                    const mesh = createHumanMesh();
-                    scene.add(mesh);
-                    otherPlayers.set(payload.id, { 
-                       mesh: mesh, 
-                        targetPos: new THREE.Vector3(), 
-                        targetRot: 0,
-                        isSandwalking: false 
-                    });
-                }
+            presenceChannel
+                .on('presence', { event: 'sync' }, () => {
+                    const state = presenceChannel.presenceState();
+                    const seen = new Set();
 
-                const data = otherPlayers.get(payload.id);
-                data.targetPos.set(payload.pos.x, payload.pos.y, payload.pos.z);
-                data.targetRot = payload.rot;
-                data.isSandwalking = payload.isSandwalking;
-            }).subscribe();
-            // --- BROADCAST LOOP (Place inside your init() function) ---
-            setInterval(() => {
-                if (controls.isLocked) {
-                    channel.send({
-                        type: 'broadcast',
-                        event: 'move',
-                        payload: {
-                            id: myId,
-                            pos: camera.position,
-                            rot: camera.rotation.y,
-                            isSandwalking: moveShift // Tells others if you are doing the Fremen walk
+                    Object.values(state).forEach((entries) => {
+                        entries.forEach((p) => {
+                            if (!p.id || p.id === myId) return;
+                            seen.add(p.id);
+
+                            if (!otherPlayers.has(p.id)) {
+                                const mesh = createHumanMesh();
+                                scene.add(mesh);
+                                otherPlayers.set(p.id, {
+                                    mesh,
+                                    targetPos: new THREE.Vector3(),
+                                    targetRot: 0,
+                                    isSandwalking: false
+                                });
+                            }
+
+                            const data = otherPlayers.get(p.id);
+                            data.targetPos.set(p.x ?? 0, p.y ?? 10, p.z ?? 0);
+                            data.targetRot = p.rot ?? 0;
+                            data.isSandwalking = !!p.isSandwalking;
+                        });
+                    });
+
+                    otherPlayers.forEach((value, id) => {
+                        if (!seen.has(id)) {
+                            scene.remove(value.mesh);
+                            otherPlayers.delete(id);
                         }
                     });
-                }
-            }, 50);
-            // 1. Setup Scene and Fog (Atmosphere)
+
+                    onlinePlayerCount = 1 + seen.size;
+                    updatePlayerCountHUD();
+                    syncPresenceToMinimap();
+                })
+                .on('presence', { event: 'join' }, () => {
+                    updatePlayerCountHUD();
+                    syncPresenceToMinimap();
+                })
+                .on('presence', { event: 'leave' }, () => {
+                    updatePlayerCountHUD();
+                    syncPresenceToMinimap();
+                })
+                .on('broadcast', { event: 'move' }, ({ payload }) => {
+                    if (!payload || payload.id === myId) return;
+
+                    if (!otherPlayers.has(payload.id)) {
+                        const mesh = createHumanMesh();
+                        scene.add(mesh);
+                        otherPlayers.set(payload.id, {
+                            mesh,
+                            targetPos: new THREE.Vector3(),
+                            targetRot: 0,
+                            isSandwalking: false
+                        });
+                    }
+
+                    const data = otherPlayers.get(payload.id);
+                    data.targetPos.set(payload.pos.x, payload.pos.y, payload.pos.z);
+                    data.targetRot = payload.rot;
+                    data.isSandwalking = payload.isSandwalking;
+                    syncPresenceToMinimap();
+                })
+                .subscribe(async (status) => {
+                    if (status === 'SUBSCRIBED') {
+                        await presenceChannel.track({
+                            id: myId,
+                            x: camera.position.x,
+                            y: camera.position.y,
+                            z: camera.position.z,
+                            rot: camera.rotation.y,
+                            isSandwalking: moveShift
+                        });
+                        updatePlayerCountHUD();
+                    }
+                });
+
+            setInterval(async () => {
+                if (!presenceChannel || !controls.isLocked) return;
+
+                await presenceChannel.track({
+                    id: myId,
+                    x: camera.position.x,
+                    y: camera.position.y,
+                    z: camera.position.z,
+                    rot: camera.rotation.y,
+                    isSandwalking: moveShift
+                });
+
+                presenceChannel.send({
+                    type: 'broadcast',
+                    event: 'move',
+                    payload: {
+                        id: myId,
+                        pos: {
+                            x: camera.position.x,
+                            y: camera.position.y,
+                            z: camera.position.z
+                        },
+                        rot: camera.rotation.y,
+                        isSandwalking: moveShift
+                    }
+                });
+            }, 100);
+        }
+
+        function init() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xcc8855);
             scene.fog = new THREE.FogExp2(0xcc8855, 0.004);
 
-            // 2. Setup Camera
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1500);
-            camera.position.y = 10; // Player height
+            camera.position.y = 10;
 
-            // 3. Setup Lighting (Arrakis Sun)
             const ambientLight = new THREE.HemisphereLight(0xeeeeff, 0x777788, 0.5);
             ambientLight.position.set(0.5, 1, 0.75);
             scene.add(ambientLight);
@@ -340,7 +405,6 @@
             dirLight.position.set(100, 200, 50);
             scene.add(dirLight);
 
-            // 4. Setup Controls (First Person)
             controls = new PointerLockControls(camera, document.body);
 
             const blocker = document.getElementById('blocker');
@@ -358,14 +422,13 @@
 
             scene.add(controls.getObject());
 
-            // Keydown/Keyup Event Listeners
             const onKeyDown = function (event) {
                 switch (event.code) {
                     case 'KeyW': moveForward = true; break;
                     case 'KeyA': moveLeft = true; break;
                     case 'KeyS': moveBackward = true; break;
                     case 'KeyD': moveRight = true; break;
-                    case 'ShiftLeft': moveShift = true; break; // <--- ADD THIS
+                    case 'ShiftLeft': moveShift = true; break;
                     case 'Space':
                         if (canJump === true) velocity.y += 350;
                         canJump = false;
@@ -379,7 +442,7 @@
                     case 'KeyA': moveLeft = false; break;
                     case 'KeyS': moveBackward = false; break;
                     case 'KeyD': moveRight = false; break;
-                    case 'ShiftLeft': moveShift = false; break; // <--- ADD THIS
+                    case 'ShiftLeft': moveShift = false; break;
                 }
             };
 
@@ -388,11 +451,9 @@
 
             raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 20);
 
-            // 5. Generate Procedural Sand Dunes (Terrain)
             geometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
-            geometry.rotateX(-Math.PI / 2); // Lay the plane flat
+            geometry.rotateX(-Math.PI / 2);
 
-            // Manipulate vertices to create rolling dunes using Math.sin/cos
             const positionAttribute = geometry.attributes.position;
             for (let i = 0; i < positionAttribute.count; i++) {
                 const x = positionAttribute.getX(i);
@@ -415,15 +476,14 @@
             scene.add(terrain);
             objects.push(terrain);
 
-            // 6. Generate Melange (Spice) Particles
             const particleCount = 5000;
             const particleGeometry = new THREE.BufferGeometry();
             const particlePositions = new Float32Array(particleCount * 3);
 
             for (let i = 0; i < particleCount * 3; i += 3) {
-                particlePositions[i] = (Math.random() - 0.5) * 1000; // x
-                particlePositions[i + 1] = Math.random() * 50;      // y (floating height)
-                particlePositions[i + 2] = (Math.random() - 0.5) * 1000; // z
+                particlePositions[i] = (Math.random() - 0.5) * 1000;
+                particlePositions[i + 1] = Math.random() * 50;
+                particlePositions[i + 2] = (Math.random() - 0.5) * 1000;
             }
 
             particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
@@ -439,7 +499,6 @@
             spiceParticles = new THREE.Points(particleGeometry, particleMaterial);
             scene.add(spiceParticles);
 
-            // GENERATE REALISTIC SPICE FLECKS
             const crystalGeo = new THREE.DodecahedronGeometry(0.8, 0);
             const crystalMat = new THREE.MeshStandardMaterial({ 
                 color: 0xff8800, 
@@ -458,51 +517,44 @@
                 spiceCrystals.push(crystal);
             }
 
-            // NEUTRALIZED OLD ROCK GENERATIONS (Keeping code per Golden Rule, but nullifying effect)
             const rockMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.9, flatShading: true });
             for(let i = 0; i < 15; i++) {
                 const rockGeo = new THREE.DodecahedronGeometry(10, 0);
                 const rock = new THREE.Mesh(rockGeo, rockMat);
-                rock.position.set(0, -9999, 0); // Buried safely underground
+                rock.position.set(0, -9999, 0);
                 scene.add(rock);
             }
             const obsidianMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, flatShading: true, roughness: 1 });
             for(let i = 0; i < 20; i++) {
                 const g = new THREE.IcosahedronGeometry(15, 1);
                 const r = new THREE.Mesh(g, obsidianMat);
-                r.position.set(0, -9999, 0); // Buried safely underground
+                r.position.set(0, -9999, 0);
                 scene.add(r);
             }
             const smoothRockMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.9, metalness: 0.1 });
             for(let i = 0; i < 25; i++) {
                 const smoothGeo = new THREE.SphereGeometry(15, 32, 32); 
                 const rock = new THREE.Mesh(smoothGeo, smoothRockMat);
-                rock.position.set(0, -9999, 0); // Buried safely underground
+                rock.position.set(0, -9999, 0);
                 scene.add(rock);
             }
 
-            // *** NEW: RARE, MASSIVE TEXTURED PLATEAUS ***
             const plateauMat = new THREE.MeshStandardMaterial({ 
-                color: 0x362c24, // Dusty rock color
+                color: 0x362c24,
                 roughness: 1.0, 
                 metalness: 0.0,
-                flatShading: true // Exposes the jagged vertex displacement
+                flatShading: true
             });
 
-            // Extremely rare (only 4 on the whole map)
             for(let i = 0; i < 4; i++) {
-                // Massive base radius
                 const rSize = 80 + Math.random() * 50; 
-                // High detail icosahedron to allow for vertex displacement
                 const plateauGeo = new THREE.IcosahedronGeometry(rSize, 4); 
                 
-                // Displacement Loop to add craggy texture
                 const pos = plateauGeo.attributes.position;
                 for(let j=0; j<pos.count; j++) {
                     const vx = pos.getX(j);
                     const vy = pos.getY(j);
                     const vz = pos.getZ(j);
-                    // Procedural noise displacement
                     const noise = Math.sin(vx*0.15)*Math.cos(vz*0.15)*4 + Math.sin(vy*0.1)*3;
                     pos.setXYZ(j, vx + noise, vy + noise, vz + noise);
                 }
@@ -514,19 +566,16 @@
                 const rz = (Math.random() - 0.5) * 1600;
                 const ry = Math.sin(rx / 50) * Math.cos(rz / 50) * 20 + Math.sin(rx / 200) * Math.cos(rz / 200) * 50;
                 
-                // Position, scale, and squash the Y axis to create a flat-ish plateau
                 rock.position.set(rx, ry - 10, rz);
                 rock.scale.set(1, 0.35 + Math.random() * 0.1, 1); 
                 rock.rotation.y = Math.random() * Math.PI;
 
                 scene.add(rock);
-                objects.push(rock); // Added to raycasting
+                objects.push(rock);
             }
 
-            // THE SANDWORM (SHAI-HULUD)
             createSandworm();
 
-            // GLOBAL SPARKLE SYSTEM
             const sparkleGeo = new THREE.BufferGeometry();
             const sparkleCount = 8000;
             const sparklePos = new Float32Array(sparkleCount * 3);
@@ -541,11 +590,13 @@
             }));
             scene.add(sparkleSystem);
 
-            // 7. Setup Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
+
+            initPresenceMultiplayer();
+            updatePlayerCountHUD();
 
             window.addEventListener('resize', onWindowResize);
             document.addEventListener('mousedown', onMouseClick);
@@ -563,17 +614,15 @@
                 seg.position.z = i * 8;
                 sandworm.add(seg);
             }
-            // Maw / Mouth
             const mouthGeo = new THREE.CylinderGeometry(15, 15, 5, 12, 1, true);
             const mouth = new THREE.Mesh(mouthGeo, new THREE.MeshBasicMaterial({color: 0x000000}));
             mouth.rotation.x = Math.PI / 2;
             mouth.position.z = -2;
             sandworm.add(mouth);
 
-            sandworm.position.y = -100; // Start deep underground
+            sandworm.position.y = -100;
             scene.add(sandworm);
 
-            // Wormsign Particles
             const signGeo = new THREE.BufferGeometry();
             const signPos = new Float32Array(300 * 3);
             signGeo.setAttribute('position', new THREE.BufferAttribute(signPos, 3));
@@ -600,14 +649,12 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
-        // --- UPDATE OTHER PLAYERS (Place inside your animate() function) ---
+
         function updateMultiplayer(delta, time) {
             otherPlayers.forEach((data) => {
-                // Smooth interpolation
                 data.mesh.position.lerp(new THREE.Vector3(data.targetPos.x, data.targetPos.y - 18, data.targetPos.z), 0.1);
                 data.mesh.rotation.y = THREE.MathUtils.lerp(data.mesh.rotation.y, data.targetRot, 0.1);
 
-                // Simple animation: if they are sandwalking, make them "wobble"
                 if (data.isSandwalking) {
                     data.mesh.rotation.z = Math.sin(time * 0.005) * 0.1;
                 } else {
@@ -616,26 +663,19 @@
             });
         }
 
-        // --- Game Loop (Physics and Rendering) ---
         function animate() {
             requestAnimationFrame(animate);
 
             const time = performance.now();
-            // Use a fixed delta if the tab was inactive to prevent physics explosions
             const delta = Math.min((time - prevTime) / 1000, 0.1);
     
-            // --- ALWAYS RUN (Even if menu is open) ---
-            // This ensures you actually see the game world before clicking play
             renderer.render(scene, camera);
     
-            // Update multiplayer even if we are in the menu so the world looks alive
             if (typeof otherPlayers !== 'undefined') {
                 updateMultiplayer(delta, time);
             }
 
-            // --- ONLY RUN WHEN PLAYING ---
             if (controls.isLocked === true) {
-                // 1. Particle Animations
                 const positions = spiceParticles.geometry.attributes.position.array;
                 for(let i = 0; i < positions.length; i+=3) {
                     positions[i] += 0.05; 
@@ -646,7 +686,6 @@
                 sparkleSystem.rotation.y += 0.001;
                 sparkleSystem.material.opacity = 0.3 + Math.sin(time * 0.005) * 0.2;
 
-                // 2. Physics & Movement
                 velocity.x -= velocity.x * 10.0 * delta;
                 velocity.z -= velocity.z * 10.0 * delta;
                 velocity.y -= 9.8 * 100.0 * delta; 
@@ -662,7 +701,6 @@
                 controls.moveForward(-velocity.z * delta);
                 controls.getObject().position.y += (velocity.y * delta);
 
-                // 3. Ground Collision Logic
                 const pPos = controls.getObject().position;
                 const dY = Math.sin(pPos.x/50)*Math.cos(pPos.z/50)*20 + Math.sin(pPos.x/200)*Math.cos(pPos.z/200)*50;
         
@@ -676,7 +714,6 @@
                     const hitPoint = intersections[0].point.y;
                     if (hitPoint > targetFloorHeight) {
                         targetFloorHeight = hitPoint;
-                        // Detect if it's a plateau/rock
                         if (intersections[0].object.geometry.type.includes("Icosahedron") || 
                             intersections[0].object.geometry.type.includes("Sphere")) {
                             onRock = true;
@@ -684,24 +721,20 @@
                     }
                 }
 
-                // Snap to floor
                 if (pPos.y < targetFloorHeight + 8) {
                     velocity.y = 0;
                     pPos.y = targetFloorHeight + 8;
                     canJump = true;
                 }
 
-                // 4. Update Sandworm
                 updateSandworm(delta, pPos, targetFloorHeight, onRock);
         
-                // 5. Update UI
                 updateMinimap();
             }
 
             prevTime = time;
         }
 
-        // SANDWORM LIFECYCLE
         function updateSandworm(delta, pPos, dY, onRock) {
             wormTimer += delta;
 
