@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dune: Arrakis First-Person Survival</title>
+  <title>Dune: Arrakis First‑Person Survival</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -14,6 +14,7 @@
       --danger: #ff3300;
       --white: #ffffff;
       --green: #6bff8a;
+      --dropdown-bg: rgba(10,10,10,0.92);
     }
 
     body {
@@ -22,6 +23,8 @@
       background: #000;
       font-family: "Courier New", Courier, monospace;
       user-select: none;
+      color: #ffd39c;
+      cursor: none;
     }
 
     canvas { display: block; }
@@ -44,27 +47,30 @@
       border-radius: 50%;
       transform: translate(-50%, -50%);
       box-sizing: border-box;
+      z-index: 15;
     }
 
-    #hud, #spice-ui, #build-ui, #guild-ui, #leaderboard-ui, #chat-ui {
+    #hud, #spice-ui, #minimap, #chat-ui {
+      position: absolute;
       background: var(--ui-bg);
       border: 1px solid var(--ui-border);
+      color: #ffe6c8;
+      pointer-events: none;
+      z-index: 20;
     }
 
     #hud {
-      position: absolute;
       top: 20px;
       left: 20px;
       min-width: 240px;
       padding: 10px;
       border-left-width: 3px;
-      font-size: 15px;
+      font-size: 14px;
       line-height: 1.45;
-      color: #ffd39c;
+      pointer-events: auto;
     }
 
     #spice-ui {
-      position: absolute;
       top: 20px;
       right: 20px;
       padding: 10px 18px;
@@ -73,121 +79,126 @@
       font-size: 20px;
     }
 
-    #build-ui {
-      position: absolute;
-      top: 120px;
+    #minimap {
+      bottom: 20px;
       left: 20px;
-      width: 300px;
-      padding: 10px;
-      color: #ffe6c8;
-      font-size: 14px;
-      line-height: 1.45;
-      pointer-events: auto;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      padding: 8px;
     }
 
-    #guild-ui {
+    #player-dots, #minimap-center {
       position: absolute;
-      top: 340px;
-      left: 20px;
-      width: 300px;
-      padding: 10px;
-      color: #ffe6c8;
-      font-size: 14px;
-      line-height: 1.45;
-      pointer-events: auto;
+      inset: 0;
     }
 
-    #leaderboard-ui {
-      position: absolute;
-      top: 120px;
-      right: 20px;
-      width: 250px;
-      padding: 10px;
-      color: #ffe6c8;
-      font-size: 14px;
-      pointer-events: auto;
+    #player-dots { pointer-events: none; }
+
+    #minimap-center {
+      top: 50%;
+      left: 50%;
+      width: 5px;
+      height: 5px;
+      background: #00ff00;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
     }
 
     #chat-ui {
-      position: absolute;
       right: 20px;
       bottom: 20px;
       width: 360px;
       padding: 10px;
-      color: #ffe6c8;
       font-size: 14px;
-      pointer-events: auto;
     }
 
     #chat-log {
-      height: 180px;
+      height: 140px;
       overflow-y: auto;
-      background: rgba(0,0,0,0.35);
+      background: rgba(0,0,0,0.4);
       padding: 6px;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       border: 1px solid rgba(255,255,255,0.1);
       white-space: pre-wrap;
     }
 
     #chat-input {
-      width: calc(100% - 80px);
+      width: calc(100% - 70px);
       box-sizing: border-box;
       padding: 6px;
       background: rgba(0,0,0,0.5);
       color: white;
       border: 1px solid #7b4d25;
       outline: none;
+      font-size: 12px;
     }
 
     #chat-send {
-      width: 70px;
+      width: 60px;
       box-sizing: border-box;
     }
 
     button {
       font-family: inherit;
-      margin: 2px 2px 4px 0;
+      margin: 1px 2px 3px 0;
       background: #2b1b12;
       color: #ffe6c8;
       border: 1px solid #8d5a2b;
-      padding: 6px 8px;
+      padding: 5px 7px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    button.active {
+      background: #7a4a1a;
+      color: white;
+      border-color: #ffbd59;
+      box-shadow: 0 0 6px #ff9d00;
+    }
+
+    /* dropdown containers */
+    .dropdown {
+      position: absolute;
+      bottom: calc(100% + 220px);
+      left: 0;
+      width: 280px;
+      background: var(--dropdown-bg);
+      border: 1px solid #8d5a2b;
+      border-radius: 4px;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.35;
+      display: none;
+      z-index: 90;
+    }
+
+    .dropdown-toggle {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 4px 8px;
+      font-size: 12px;
+      background: #2b1b12;
+      border: 1px solid #8d5a2b;
       cursor: pointer;
     }
 
-    button.active { background: #7a4a1a; color: white; }
+    #dropdown-build, #dropdown-guild, #dropdown-leaderboard {
+      pointer-events: auto;
+    }
+
+    #dropdown-build.active,
+    #dropdown-guild.active,
+    #dropdown-leaderboard.active {
+      display: block;
+    }
 
     #resource-ui {
       margin-top: 8px;
       padding-top: 8px;
       border-top: 1px dashed #7b4d25;
     }
-
-    #minimap {
-      position: absolute;
-      bottom: 20px;
-      left: 20px;
-      width: 180px;
-      height: 180px;
-      background: rgba(0,0,0,0.5);
-      border: 2px solid var(--ui-border);
-      border-radius: 50%;
-      overflow: hidden;
-      z-index: 15;
-      pointer-events: none;
-    }
-
-    #minimap-center {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 6px;
-      height: 6px;
-      background: #00ff00;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-    }
-
-    #player-dots { position: absolute; inset: 0; }
 
     #worm-warning, #combat-warning, #save-indicator {
       position: absolute;
@@ -196,18 +207,18 @@
       font-weight: bold;
       text-shadow: 0 0 15px #000;
       display: none;
-      z-index: 20;
+      z-index: 30;
     }
 
     #worm-warning {
-      top: 14%;
+      top: 16%;
       font-size: 30px;
       color: var(--danger);
       animation: blinker 0.5s linear infinite;
     }
 
     #combat-warning {
-      top: 19%;
+      top: 20%;
       font-size: 22px;
       color: #ffffff;
     }
@@ -228,7 +239,7 @@
       color: white;
       pointer-events: auto;
       cursor: pointer;
-      z-index: 30;
+      z-index: 40;
       text-align: center;
     }
 
@@ -254,8 +265,8 @@
   <div id="ui-layer">
     <div id="crosshair"></div>
     <div id="hud"></div>
-    <div id="spice-ui">MELANGE: <span id="spice-score">0</span></div>
-    <div id="worm-warning">WORMSIGN DETECTED - FIND ROCKS!</div>
+    <div id="spice-ui"></div>
+    <div id="worm-warning">WORMSIGN DETECTED – FIND ROCKS!</div>
     <div id="combat-warning">COMBAT READY</div>
     <div id="save-indicator">SAVED</div>
   </div>
@@ -267,20 +278,20 @@
         <strong>Click to Enter the Desert</strong><br><br>
         W, A, S, D = Move<br>
         SPACE = Jump<br>
-        SHIFT = Sandwalk / Sprint<br>
+        SHIFT = Fremen Walk / Sandwalk<br>
         MOUSE = Look around<br>
-        E = Interact / Gather / Build / Attack<br>
-        Q = White Sword<br>
+        E = Interact / Build / Attack<br>
+        Q = Toggle All White Sword / Hands<br>
         1 = Foundation, 2 = Wall, 3 = Roof, 4 = Bench<br>
         ESC = Clear Build Mode
       </div>
     </div>
   </div>
 
-  <div id="build-ui">
-    <div><strong>Building</strong></div>
-    <div>Mode: <span id="build-mode-label">None</span></div>
-    <div>Status: <span id="build-status">Select a piece</span></div>
+  <div id="dropdown-build" class="dropdown">
+    <div><strong>Build</strong></div>
+    <div><span id="build-mode-label">None</span></div>
+    <div><span id="build-status">Select a piece</span></div>
     <div>
       <button id="mode-foundation">Foundation</button>
       <button id="mode-wall">Wall</button>
@@ -304,7 +315,7 @@
     </div>
   </div>
 
-  <div id="guild-ui">
+  <div id="dropdown-guild" class="dropdown">
     <div><strong>Guild Exchange</strong></div>
     <button id="buy-water">Buy Water (10 Melange)</button>
     <button id="buy-wood">Buy Wood (8 Melange)</button>
@@ -312,27 +323,31 @@
     <button id="buy-fabric">Buy Fabric (12 Melange)</button>
     <button id="buy-electronics">Buy Electronics (18 Melange)</button>
     <button id="buy-heal">Buy Medical Gel (15 Melange)</button>
-    <div style="margin-top:6px;">Construction materials and water are purchased with melange.</div>
+    <div style="margin-top:6px;font-size:11px;">Construction materials and water are purchased with melange.</div>
   </div>
 
-  <div id="leaderboard-ui">
+  <div id="dropdown-leaderboard" class="dropdown">
     <div><strong>Melange Leaderboard</strong></div>
-    <div id="leaderboard-list" style="margin-top:6px; line-height:1.5;"></div>
-  </div>
-
-  <div id="chat-ui">
-    <div><strong>Live Chat</strong></div>
-    <div id="chat-log"></div>
-    <div style="display:flex; gap:6px;">
-      <input id="chat-input" type="text" maxlength="120" placeholder="Type message..." />
-      <button id="chat-send">Send</button>
-    </div>
+    <div id="leaderboard-list"></div>
   </div>
 
   <div id="minimap">
     <div id="minimap-center"></div>
     <div id="player-dots"></div>
   </div>
+
+  <div id="chat-ui">
+    <div><strong>Live Chat</strong></div>
+    <div id="chat-log"></div>
+    <div style="display:flex; gap:4px;">
+      <input id="chat-input" type="text" maxlength="120" placeholder="Type message..." />
+      <button id="chat-send">Send</button>
+    </div>
+  </div>
+
+  <div class="dropdown-toggle" style="left: 10px; top: 10px;" id="btn-toggle-build">🛠️ Build</div>
+  <div class="dropdown-toggle" style="left: 90px; top: 10px;" id="btn-toggle-guild">💰 Guild</div>
+  <div class="dropdown-toggle" style="left: 170px; top: 10px;" id="btn-toggle-leaderboard">🏆 Leader</div>
 
   <script type="importmap">
     {
@@ -388,9 +403,10 @@
     let fabric = 0;
     let electronics = 0;
     let hasStillsuit = false;
-    let equippedWeapon = 'hands';
+    let equippedWeapon = 'hands'; // 'hands' or 'sword'
     let buildMode = null;
     let buildPreview = null;
+    let swordMesh = null;
 
     let wormState = 'idle';
     let wormTimer = 0;
@@ -420,10 +436,28 @@
       damage: 25
     };
 
+    // DAY‑NIGHT (10 min cycle)
+    const DAY_DURATION_SEC = 600; // 10 minutes
+    let dayPhase = 0; // 0..1
+
+    // SEED for deterministic world (everyone gets same maps)
+    const worldSeed = 42;
+    Math.seedrandom = function(seed) {
+      let m = 0x80000000;
+      let a = 1103515245;
+      let c = 12345;
+      let z = seed || Math.random();
+      return function() {
+        z = (a * z + c) % m;
+        return z / m;
+      };
+    };
+    const random = Math.seedrandom(worldSeed);
+
     init();
     animate();
 
-    function saveGame() {
+        function saveGame() {
       try {
         const data = {
           spiceScore, water, health, wood, stone, fabric, electronics, hasStillsuit, equippedWeapon,
@@ -483,8 +517,9 @@
         `Weapon: ${equippedWeapon === 'sword' ? 'All White Sword' : 'Hands'}<br>` +
         `Build: ${buildMode ? buildMode : 'None'}`;
 
-      document.getElementById('spice-score').innerText = Math.floor
-            document.getElementById('spice-score').innerText = Math.floor(spiceScore);
+      document.getElementById('spice-ui').innerHTML =
+        `MELANGE: <span id="spice-score">${Math.floor(spiceScore)}</span>`;
+
       document.getElementById('water-score').innerText = Math.floor(water);
       document.getElementById('health-score').innerText = Math.floor(health);
       document.getElementById('wood-score').innerText = wood;
@@ -501,9 +536,9 @@
       const board = [
         { name: playerName, score: spiceScore, me: true },
         ...Array.from(otherPlayers.values()).map(p => ({ name: p.name || 'Player', score: p.melange || 0, me: false }))
-      ].sort((a, b) => b.score - a.score).slice(0, 8);
+      ].sort((a, b) => b.score - a.score).slice(0, 10);
 
-      list.innerHTML = board.map((p, i) => `${i + 1}. ${p.name}${p.me ? ' (you)' : ''} - ${Math.floor(p.score)}`).join('<br>');
+      list.innerHTML = board.map((p, i) => `${i + 1}. ${p.name}${p.me ? ' (you)' : ''} – ${Math.floor(p.score)}`).join('<br>');
     }
 
     function addChatLine(text) {
@@ -517,7 +552,10 @@
     function initChatUI() {
       document.getElementById('chat-send').onclick = sendChat;
       document.getElementById('chat-input').addEventListener('keydown', e => {
-        if (e.key === 'Enter') sendChat();
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          sendChat();
+        }
       });
     }
 
@@ -542,30 +580,30 @@
       const group = new THREE.Group();
       const mat = new THREE.MeshLambertMaterial({ color });
 
-      const head = new THREE.Mesh(new THREE.SphereGeometry(2, 8, 8), mat);
-      head.position.y = 16;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(2.1, 8, 8), mat);
+      head.position.y = 16.5;
       group.add(head);
 
-      const torso = new THREE.Mesh(new THREE.BoxGeometry(4, 8, 2), mat);
-      torso.position.y = 11;
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(4.2, 8.5, 2.2), mat);
+      torso.position.y = 11.2;
       group.add(torso);
 
-      const armGeo = new THREE.BoxGeometry(1, 7, 1);
+      const armGeo = new THREE.BoxGeometry(1.1, 7.2, 1.1);
       const leftArm = new THREE.Mesh(armGeo, mat);
-      leftArm.position.set(-2.5, 11, 0);
+      leftArm.position.set(-2.6, 11.3, 0);
       group.add(leftArm);
 
       const rightArm = new THREE.Mesh(armGeo, mat);
-      rightArm.position.set(2.5, 11, 0);
+      rightArm.position.set(2.6, 11.3, 0);
       group.add(rightArm);
 
-      const legGeo = new THREE.BoxGeometry(1.5, 8, 1.5);
+      const legGeo = new THREE.BoxGeometry(1.6, 8.2, 1.6);
       const leftLeg = new THREE.Mesh(legGeo, mat);
-      leftLeg.position.set(-1, 4, 0);
+      leftLeg.position.set(-1.1, 4.1, 0);
       group.add(leftLeg);
 
       const rightLeg = new THREE.Mesh(legGeo, mat);
-      rightLeg.position.set(1, 4, 0);
+      rightLeg.position.set(1.1, 4.1, 0);
       group.add(rightLeg);
 
       return group;
@@ -576,7 +614,7 @@
       const bladeMat = new THREE.MeshStandardMaterial({
         color: 0xffffff,
         emissive: 0xffffff,
-        emissiveIntensity: 0.55,
+        emissiveIntensity: 0.8,
         metalness: 1,
         roughness: 0.1
       });
@@ -586,18 +624,19 @@
         roughness: 0.4
       });
 
-      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.2, 7, 0.5), bladeMat);
-      blade.position.y = 4.5;
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.22, 8, 0.55), bladeMat);
+      blade.position.y = 4.8;
       group.add(blade);
 
-      const guard = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.25, 0.7), hiltMat);
-      guard.position.y = 1.2;
+      const guard = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.3, 0.85), hiltMat);
+      guard.position.y = 1.3;
       group.add(guard);
 
-      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 1.5, 10), hiltMat);
-      grip.position.y = 0.2;
+      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 1.7, 10), hiltMat);
+      grip.position.y = 0.25;
       group.add(grip);
 
+      group.rotation.set(-0.2, 0.1, 0.1);
       return group;
     }
 
@@ -613,7 +652,7 @@
       ambient.position.set(0.5, 1, 0.75);
       scene.add(ambient);
 
-      const dirLight = new THREE.DirectionalLight(0xffaa55, 1.15);
+      const dirLight = new THREE.DirectionalLight(0xffaa55, 1.2);
       dirLight.position.set(100, 200, 50);
       scene.add(dirLight);
 
@@ -678,52 +717,52 @@
 
     function buildSpice() {
       const geo = new THREE.BufferGeometry();
-      const arr = new Float32Array(12000 * 3);
+      const arr = new Float32Array(16000 * 3);
       for (let i = 0; i < arr.length; i += 3) {
-        arr[i] = (Math.random() - 0.5) * 4000;
-        arr[i + 1] = Math.random() * 80;
-        arr[i + 2] = (Math.random() - 0.5) * 4000;
+        arr[i] = (random() - 0.5) * 4000;
+        arr[i + 1] = random() * 80;
+        arr[i + 2] = (random() - 0.5) * 4000;
       }
       geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
       spiceParticles = new THREE.Points(geo, new THREE.PointsMaterial({
         color: 0xff5500,
-        size: 0.6,
+        size: 0.75,
         transparent: true,
-        opacity: 0.8,
+        opacity: 0.75,
         blending: THREE.AdditiveBlending
       }));
       scene.add(spiceParticles);
 
-      const crystalGeo = new THREE.DodecahedronGeometry(0.8, 0);
+      const crystalGeo = new THREE.DodecahedronGeometry(0.9, 0);
       const crystalMat = new THREE.MeshStandardMaterial({
-        color: 0xff8800,
-        emissive: 0xff4400,
+        color: 0xff9d00,
+        emissive: 0xff5500,
+        emissiveIntensity: 0.9,
         roughness: 0,
         metalness: 1
       });
 
-      for (let i = 0; i < 120; i++) {
+      for (let i = 0; i < 160; i++) {
+        const x = (random() - 0.5) * 3600;
+        const z = (random() - 0.5) * 3600;
         const crystal = new THREE.Mesh(crystalGeo, crystalMat);
-        const x = (Math.random() - 0.5) * 3200;
-        const z = (Math.random() - 0.5) * 3200;
-        const y = terrainHeightAt(x, z);
-        crystal.position.set(x, y + 0.2, z);
-        crystal.rotation.set(Math.random(), Math.random(), Math.random());
+        crystal.position.set(x, terrainHeightAt(x, z) + 0.25, z);
+        crystal.rotation.set(random(), random(), random());
         scene.add(crystal);
         spiceCrystals.push(crystal);
       }
 
       const sparkleGeo = new THREE.BufferGeometry();
-      const sparklePos = new Float32Array(12000 * 3);
-      for (let i = 0; i < sparklePos.length; i++) sparklePos[i] = (Math.random() - 0.5) * 4000;
+      const sparklePos = new Float32Array(22000 * 3);
+      for (let i = 0; i < sparklePos.length; i++) sparklePos[i] = (random() - 0.5) * 4000;
       sparkleGeo.setAttribute('position', new THREE.BufferAttribute(sparklePos, 3));
       sparkleSystem = new THREE.Points(
         sparkleGeo,
         new THREE.PointsMaterial({
-          color: 0xffcc00,
-          size: 0.15,
+          color: 0xffcc88,
+          size: 0.25,
           transparent: true,
-          opacity: 0.5,
+          opacity: 0.55,
           blending: THREE.AdditiveBlending
         })
       );
@@ -733,28 +772,28 @@
     function buildRocksAndPlateaus() {
       const plateauMat = new THREE.MeshStandardMaterial({
         color: 0x362c24,
-        roughness: 1,
+        roughness: 0.95,
         flatShading: true
       });
 
-      for (let i = 0; i < 16; i++) {
-        const size = 100 + Math.random() * 90;
+      for (let i = 0; i < 24; i++) {
+        const size = 120 + random() * 100;
         const geo = new THREE.IcosahedronGeometry(size, 3);
         const pos = geo.attributes.position;
         for (let j = 0; j < pos.count; j++) {
           const vx = pos.getX(j);
           const vy = pos.getY(j);
           const vz = pos.getZ(j);
-          const noise = Math.sin(vx * 0.12) * Math.cos(vz * 0.12) * 7 + Math.sin(vy * 0.08) * 4;
+          const noise = Math.sin(vx * 0.08) * Math.cos(vz * 0.08) * 7.5 + Math.sin(vy * 0.06) * 4.5;
           pos.setXYZ(j, vx + noise, vy + noise, vz + noise);
         }
         geo.computeVertexNormals();
         const rock = new THREE.Mesh(geo, plateauMat);
-        const x = (Math.random() - 0.5) * 6000;
-        const z = (Math.random() - 0.5) * 6000;
+        const x = (random() - 0.5) * 6000;
+        const z = (random() - 0.5) * 6000;
         rock.position.set(x, terrainHeightAt(x, z) - 15, z);
-        rock.scale.set(1, 0.35 + Math.random() * 0.15, 1);
-        rock.rotation.y = Math.random() * Math.PI;
+        rock.scale.set(1, 0.3 + random() * 0.12, 1);
+        rock.rotation.y = random() * Math.PI;
         scene.add(rock);
         objects.push(rock);
       }
@@ -762,46 +801,46 @@
 
     function createSandworm() {
       sandworm = new THREE.Group();
-      for (let i = 0; i < 22; i++) {
-        const radius = 15 - i * 0.45;
+      for (let i = 0; i < 26; i++) {
+        const radius = 18 - i * 0.45;
         const seg = new THREE.Mesh(
-          new THREE.TorusGeometry(radius, 4, 8, 16),
+          new THREE.TorusGeometry(radius, 4, 10, 18),
           new THREE.MeshLambertMaterial({ color: 0x3d2b1f })
         );
         seg.rotation.x = Math.PI / 2;
-        seg.position.z = i * 8;
+        seg.position.z = i * 8.5;
         sandworm.add(seg);
       }
       const mouth = new THREE.Mesh(
-        new THREE.CylinderGeometry(15, 15, 5, 12, 1, true),
-        new THREE.MeshBasicMaterial({ color: 0x000000 })
+        new THREE.CylinderGeometry(18, 18, 6, 14, 1, true),
+        new THREE.MeshBasicMaterial({ color: 0x070707 })
       );
       mouth.rotation.x = Math.PI / 2;
-      mouth.position.z = -2;
+      mouth.position.z = -2.5;
       sandworm.add(mouth);
       sandworm.position.y = -200;
       scene.add(sandworm);
 
       const signGeo = new THREE.BufferGeometry();
-      const signPos = new Float32Array(360 * 3);
+      const signPos = new Float32Array(480 * 3);
       signGeo.setAttribute('position', new THREE.BufferAttribute(signPos, 3));
       wormSignParticles = new THREE.Points(
         signGeo,
-        new THREE.PointsMaterial({ color: 0xd4a373, size: 4, transparent: true, opacity: 0.5 })
+        new THREE.PointsMaterial({ color: 0xc89b68, size: 5, transparent: true, opacity: 0.5 })
       );
       scene.add(wormSignParticles);
     }
 
     function spawnEnemies() {
       for (let i = 0; i < 10; i++) {
+        const x = (random() - 0.5) * 5000;
+        const z = (random() - 0.5) * 5000;
         const enemy = {
           mesh: createHumanMesh(0x8a3b2c),
           health: 60,
-          speed: 18 + Math.random() * 8,
+          speed: 16 + random() * 8,
           attackTimer: 0
         };
-        const x = (Math.random() - 0.5) * 5000;
-        const z = (Math.random() - 0.5) * 5000;
         enemy.mesh.position.set(x, terrainHeightAt(x, z) + 8, z);
         scene.add(enemy.mesh);
         enemies.push(enemy);
@@ -815,6 +854,15 @@
     }
 
     function initUI() {
+      function toggle(id) {
+        const el = document.getElementById(id);
+        el.classList.toggle('active');
+      }
+
+      document.getElementById('btn-toggle-build').onclick = () => toggle('dropdown-build');
+      document.getElementById('btn-toggle-guild').onclick = () => toggle('dropdown-guild');
+      document.getElementById('btn-toggle-leaderboard').onclick = () => toggle('dropdown-leaderboard');
+
       document.getElementById('mode-foundation').onclick = () => setBuildMode('foundation');
       document.getElementById('mode-wall').onclick = () => setBuildMode('wall');
       document.getElementById('mode-roof').onclick = () => setBuildMode('roof');
@@ -833,6 +881,15 @@
     }
 
     function setWeapon(type) {
+      if (type === 'sword' && !swordMesh) {
+        swordMesh = createSwordMesh();
+        swordMesh.position.set(1.2, 1.8, 1.3);
+        swordMesh.scale.set(0.45, 0.45, 0.45);
+        controls.getObject().add(swordMesh);
+      } else if (type === 'hands' && swordMesh) {
+        controls.getObject().remove(swordMesh);
+        swordMesh = null;
+      }
       equippedWeapon = type;
       updateHUD();
       saveGame();
@@ -889,7 +946,7 @@
       return `${Math.round(x / 12) * 12}_${Math.round(z / 12) * 12}`;
     }
 
-        function spendMaterials(costs) {
+    function spendMaterials(costs) {
       if ((wood < (costs.wood || 0)) || (stone < (costs.stone || 0)) || (electronics < (costs.electronics || 0))) return false;
       wood -= costs.wood || 0;
       stone -= costs.stone || 0;
@@ -953,18 +1010,17 @@
     }
 
     function onKeyDown(event) {
+      if (event.target !== document.body) return;
+      event.preventDefault();
+
       switch (event.code) {
         case 'KeyW': moveForward = true; break;
-        case 'KeyA': moveLeft = true; break;
         case 'KeyS': moveBackward = true; break;
+        case 'KeyA': moveLeft = true; break;
         case 'KeyD': moveRight = true; break;
-        case 'ShiftLeft': moveShift = true; break;
-        case 'KeyQ': setWeapon('sword'); break;
-        case 'Digit1': setBuildMode('foundation'); break;
-        case 'Digit2': setBuildMode('wall'); break;
-        case 'Digit3': setBuildMode('roof'); break;
-        case 'Digit4': setBuildMode('bench'); break;
-        case 'Escape': setBuildMode(null); break;
+        case 'ShiftLeft':
+          moveShift = true;
+          break;
         case 'Space':
           if (canJump) velocity.y += 350;
           canJump = false;
@@ -972,14 +1028,35 @@
         case 'KeyE':
           interact();
           break;
+        case 'KeyQ':
+          setWeapon(equippedWeapon === 'sword' ? 'hands' : 'sword');
+          break;
+        case 'Digit1':
+          setBuildMode('foundation');
+          break;
+        case 'Digit2':
+          setBuildMode('wall');
+          break;
+        case 'Digit3':
+          setBuildMode('roof');
+          break;
+        case 'Digit4':
+          setBuildMode('bench');
+          break;
+        case 'Escape':
+          setBuildMode(null);
+          break;
       }
     }
 
     function onKeyUp(event) {
+      if (event.target !== document.body) return;
+      event.preventDefault();
+
       switch (event.code) {
         case 'KeyW': moveForward = false; break;
-        case 'KeyA': moveLeft = false; break;
         case 'KeyS': moveBackward = false; break;
+        case 'KeyA': moveLeft = false; break;
         case 'KeyD': moveRight = false; break;
         case 'ShiftLeft': moveShift = false; break;
       }
@@ -987,12 +1064,18 @@
 
     function onMouseDown() {
       if (!controls.isLocked) return;
+      event.preventDefault();
+
       if (buildMode) {
         placeBuildAtCrosshair();
         return;
       }
-      if (equippedWeapon === 'sword') attackWithSword();
-      else collectWithHands();
+
+      if (equippedWeapon === 'sword') {
+        attackWithSword();
+      } else {
+        collectWithHands();
+      }
     }
 
     function collectWithHands() {
@@ -1078,12 +1161,12 @@
 
     function updateWaterDrain() {
       if (!controls.isLocked) return;
-      const baseDrain = moveShift ? 0.4 : 0.8;
+      const baseDrain = moveShift ? 0.15 : 0.4;
       const drain = hasStillsuit ? baseDrain * 0.45 : baseDrain;
       water -= drain;
       if (water <= 0) {
         water = 0;
-        health -= 1.5;
+        health -= 0.8;
         if (health <= 0) {
           health = 0;
           location.reload();
@@ -1179,7 +1262,7 @@
           data.isSandwalking = payload.isSandwalking;
           data.health = payload.health ?? data.health;
           data.melange = payload.melange ?? data.melange;
-          data.name = payload.name ?? data.name;
+          data.name =	payload.name ?? data.name;
           updateLeaderboard();
         })
         .on('broadcast', { event: 'chat' }, ({ payload }) => {
@@ -1241,10 +1324,10 @@
       otherPlayers.forEach(data => {
         data.mesh.position.lerp(
           new THREE.Vector3(data.targetPos.x, data.targetPos.y - 18, data.targetPos.z),
-          0.1
+          0.12
         );
-        data.mesh.rotation.y = THREE.MathUtils.lerp(data.mesh.rotation.y, data.targetRot, 0.1);
-        data.mesh.rotation.z = data.isSandwalking ? Math.sin(time * 0.005) * 0.1 : 0;
+        data.mesh.rotation.y = THREE.MathUtils.lerp(data.mesh.rotation.y, data.targetRot, 0.12);
+        data.mesh.rotation.z = data.isSandwalking ? Math.sin(time * 0.0055) * 0.12 : 0;
       });
     }
 
@@ -1255,12 +1338,12 @@
         const dir = p.clone().sub(enemy.mesh.position);
         const dist = dir.length();
         dir.normalize();
-        if (dist < 260) {
-          enemy.mesh.position.addScaledVector(dir, enemy.speed * delta * 0.6);
+        if (dist < 280) {
+          enemy.mesh.position.addScaledVector(dir, enemy.speed * delta * 0.55);
           enemy.mesh.lookAt(p);
-          if (dist < 6 && enemy.attackTimer <= 0) {
-            health -= 3;
-            enemy.attackTimer = 1.2;
+          if (dist < 6.5 && enemy.attackTimer <= 0) {
+            health -= 2.5;
+            enemy.attackTimer = 1.3;
           }
         }
         if (enemy.attackTimer > 0) enemy.attackTimer -= delta;
@@ -1270,25 +1353,27 @@
     function updateSandworm(delta, pPos, dY, onRock) {
       wormTimer += delta;
 
-      if (wormState === 'idle' && wormTimer > 18 && Math.random() < 0.01) {
+      if (wormState === 'idle' && wormTimer > 30 && Math.random() < 0.005) {
         wormState = 'wormsign';
         wormTimer = 0;
-        const angle = Math.random() * Math.PI * 2;
-        sandworm.position.set(pPos.x + Math.cos(angle) * 120, -50, pPos.z + Math.sin(angle) * 120);
-        document.getElementById('worm-warning').style.display = 'block';
+        const angle = random() * Math.PI * 2;
+        sandworm.position.set(pPos.x + Math.cos(angle) * 160, -50, pPos.z + Math.sin(angle) * 160);
+          document.getElementById('worm-warning').style.display = 'block';
+        }
       }
 
       if (wormState === 'wormsign') {
-        camera.position.x += (Math.random() - 0.5) * 0.5;
-        camera.position.y += (Math.random() - 0.5) * 0.5;
+        const dYOffset = 3;
+        camera.position.x += (random() - 0.5) * 0.75;
+        camera.position.y += (random() - 0.5) * 0.75;
         const p = wormSignParticles.geometry.attributes.position.array;
         for (let i = 0; i < p.length; i += 3) {
-          p[i] = sandworm.position.x + (Math.random() - 0.5) * 80;
-          p[i + 1] = dY + Math.random() * 20;
-          p[i + 2] = sandworm.position.z + (Math.random() - 0.5) * 80;
+          p[i] = sandworm.position.x + (random() - 0.5) * 100;
+          p[i + 1] = dY + dYOffset + random() * 22;
+          p[i + 2] = sandworm.position.z + (random() - 0.5) * 100;
         }
         wormSignParticles.geometry.attributes.position.needsUpdate = true;
-        if (wormTimer > 6) {
+        if (wormTimer > 7.5) {
           wormState = 'attack';
           wormTimer = 0;
         }
@@ -1296,12 +1381,12 @@
 
       if (wormState === 'attack') {
         sandworm.lookAt(pPos.x, dY, pPos.z);
-        sandworm.position.lerp(new THREE.Vector3(pPos.x, dY + 10, pPos.z), 0.05);
-        if (sandworm.position.distanceTo(pPos) < 20 && !onRock) {
-          health -= 50;
+        sandworm.position.lerp(new THREE.Vector3(pPos.x, dY + 16, pPos.z), 0.045);
+        if (sandworm.position.distanceTo(pPos) < 24 && !onRock) {
+          health -= 40;
           if (health <= 0) location.reload();
         }
-        if (wormTimer > 4) {
+        if (wormTimer > 5.5) {
           wormState = 'idle';
           wormTimer = 0;
           sandworm.position.y = -200;
@@ -1317,18 +1402,32 @@
       const dotContainer = document.getElementById('player-dots');
       dotContainer.innerHTML = '';
       const scale = 0.02;
-      const centerX = 90;
-      const centerY = 90;
+      const centerX = 70;
+      const centerY = 70;
+
+      const mineY = 70;
+      const otherY = 70;
+
+      const ownDot = document.createElement('div');
+      ownDot.style.position = 'absolute';
+      ownDot.style.width = '5px';
+      ownDot.style.height = '5px';
+      ownDot.style.background = '#00ff00';
+      ownDot.style.borderRadius = '50%';
+      ownDot.style.left = (centerX) + 'px';
+      ownDot.style.top = (otherY) + 'px';
+      ownDot.style.transform = 'translate(-50%, -50%)';
+      dotContainer.appendChild(ownDot);
 
       otherPlayers.forEach(data => {
         const relX = (data.targetPos.x - camera.position.x) * scale;
         const relZ = (data.targetPos.z - camera.position.z) * scale;
         const dist = Math.sqrt(relX * relX + relZ * relZ);
-        if (dist < 80) {
+        if (dist < 70) {
           const dot = document.createElement('div');
           dot.style.position = 'absolute';
-          dot.style.width = '6px';
-          dot.style.height = '6px';
+          dot.style.width = '5px';
+          dot.style.height = '5px';
           dot.style.background = data.isSandwalking ? '#ffd166' : '#ff3333';
           dot.style.borderRadius = '50%';
           dot.style.left = (centerX + relX) + 'px';
@@ -1349,21 +1448,52 @@
       buildPreview.position.set(x, y, z);
     }
 
+    function updateDayNight(time) {
+      dayPhase = (time / 1000 / DAY_DURATION_SEC) % 1;
+      const isNight = dayPhase > 0.25 && dayPhase < 0.75;
+
+      const skyColor = isNight
+        ? new THREE.Color(0x0b0b22)
+        : new THREE.Color(0xffaa99).lerp(new THREE.Color(0x775533), 0.15);
+
+      const ambCol = isNight
+        ? new THREE.Color(0x222244)
+        : new THREE.Color(0xddccbb);
+
+      const dirCol = isNight
+        ? new THREE.Color(0x404050).lerp(new THREE.Color(0x8080ff), 0.3)
+        : new THREE.Color(0xffaa55).lerp(new THREE.Color(0xf0d8b0), 0.1);
+
+      scene.background = skyColor;
+      scene.fog.color = skyColor;
+      const amb = scene.getObjectByName('ambient');
+      if (amb) amb.color.copy(ambCol);
+      const dir = scene.getObjectByName('dirLight');
+      if (dir) dir.color.copy(dirCol);
+
+      const spiceTint = isNight ? 0.8 : 0.6;
+      sparkleSystem.material.color.setHex(0xffcc88).multiplyScalar(spiceTint);
+      sparkleSystem.material.opacity = isNight ? 0.8 : 0.6;
+    }
+
     function animate() {
       requestAnimationFrame(animate);
 
       const time = performance.now();
       const delta = Math.min((time - prevTime) / 1000, 0.1);
 
+      updateDayNight(time);
+
       if (controls.isLocked) {
         const positions = spiceParticles.geometry.attributes.position.array;
         for (let i = 0; i < positions.length; i += 3) {
-          positions[i] += 0.05;
+          positions[i] += 0.06;
           if (positions[i] > 1000) positions[i] = -1000;
         }
         spiceParticles.geometry.attributes.position.needsUpdate = true;
-                sparkleSystem.rotation.y += 0.001;
-        sparkleSystem.material.opacity = 0.3 + Math.sin(time * 0.005) * 0.2;
+
+        sparkleSystem.rotation.y += 0.0015;
+        sparkleSystem.material.opacity = 0.5 + Math.sin(time * 0.0055) * 0.2;
 
         velocity.x -= velocity.x * 10.0 * delta;
         velocity.z -= velocity.z * 10.0 * delta;
@@ -1422,6 +1552,7 @@
   </script>
 </body>
 </html>
-       
+
+
 
     
