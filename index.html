@@ -1036,6 +1036,15 @@
       }
     }
 
+    function interact() {
+      if (tryCraftFromBench()) return;
+      if (buildMode) {
+        tryBuildAtCrosshair();
+        return;
+      }
+      collectWithHands();
+    }
+
     function tryBuildAtCrosshair() {
       const point = getCrosshairGroundPoint();
       if (!point || !buildMode) return;
@@ -1044,15 +1053,6 @@
       const y = terrainHeightAt(x, z);
       placeStructure(buildMode, x, y, z);
       updateHUD();
-    }
-
-    function interact() {
-      if (tryCraftFromBench()) return;
-      if (buildMode) {
-        tryBuildAtCrosshair();
-        return;
-      }
-      collectWithHands();
     }
 
     function isInteractingNearBench() {
