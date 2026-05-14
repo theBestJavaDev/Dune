@@ -1,791 +1,1539 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dune: Arrakis First-Person Survival</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden; /* Hide scrollbars */
-            background-color: #000;
-            font-family: 'Courier New', Courier, monospace;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dune: Arrakis First-Person Survival</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --sand: #d4a373;
+      --sand-dark: #b57a46;
+      --spice: #ff9d00;
+      --danger: #ff3300;
+      --ui-bg: rgba(0,0,0,0.55);
+      --ui-border: #d35400;
+      --white: #ffffff;
+      --green: #6bff8a;
+    }
 
-        #ui-layer {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: #f39c12;
-            text-align: center;
-            pointer-events: none;
-            z-index: 10;
-        }
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      font-family: "Courier New", Courier, monospace;
+      user-select: none;
+    }
 
-        #blocker {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            pointer-events: auto;
-            cursor: pointer;
-            z-index: 20;
-        }
+    canvas {
+      display: block;
+    }
 
-        .instructions {
-            font-size: 18px;
-            line-height: 1.5;
-        }
+    #ui-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      color: #f39c12;
+    }
 
-        .title {
-            font-size: 40px;
-            font-weight: bold;
-            color: #d35400;
-            margin-bottom: 20px;
-            letter-spacing: 5px;
-            text-transform: uppercase;
-        }
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 10px;
+      border: 2px solid rgba(255,255,255,0.6);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-sizing: border-box;
+    }
 
-        #crosshair {
-            position: absolute;
-            top: 50%; left: 50%;
-            width: 10px; height: 10px;
-            background-color: rgba(255, 255, 255, 0.5);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-        }
+    #hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      min-width: 240px;
+      padding: 10px;
+      background: var(--ui-bg);
+      border-left: 3px solid var(--ui-border);
+      font-size: 15px;
+      line-height: 1.45;
+      color: #ffd39c;
+    }
 
-        #hud {
-            position: absolute;
-            bottom: 20px; left: 20px;
-            font-size: 16px;
-            background: rgba(0,0,0,0.5);
-            padding: 10px;
-            border-left: 3px solid #d35400;
-        }
+    #spice-ui {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      padding: 10px 18px;
+      background: var(--ui-bg);
+      border: 1px solid var(--ui-border);
+      color: var(--spice);
+      text-shadow: 0 0 10px #ff5500;
+      font-size: 20px;
+    }
 
-        #spice-ui {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            font-size: 24px;
-            color: #ff9d00;
-            background: rgba(0,0,0,0.6);
-            padding: 10px 20px;
-            border: 1px solid #d35400;
-            text-shadow: 0 0 10px #ff5500;
-        }
+    #build-ui {
+      position: absolute;
+      top: 120px;
+      left: 20px;
+      width: 300px;
+      background: var(--ui-bg);
+      border: 1px solid var(--ui-border);
+      padding: 10px;
+      color: #ffe6c8;
+      font-size: 14px;
+      line-height: 1.45;
+      pointer-events: auto;
+    }
 
-        #worm-warning {
-            position: absolute;
-            top: 15%;
-            font-size: 30px;
-            color: #ff3300;
-            font-weight: bold;
-            display: none;
-            text-shadow: 0 0 15px #000;
-            animation: blinker 0.5s linear infinite;
-        }
-        @keyframes blinker { 50% { opacity: 0; } }
-    </style>
+    #build-ui button,
+    #guild-ui button,
+    #chat-ui button,
+    #leaderboard-ui button {
+      font-family: inherit;
+      margin: 2px 2px 4px 0;
+      background: #2b1b12;
+      color: #ffe6c8;
+      border: 1px solid #8d5a2b;
+      padding: 6px 8px;
+      cursor: pointer;
+    }
+
+    #build-ui button.active,
+    #weapon-ui button.active {
+      background: #7a4a1a;
+      color: white;
+    }
+
+    #weapon-ui {
+      margin-top: 8px;
+    }
+
+    #resource-ui {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed #7b4d25;
+    }
+
+    #guild-ui {
+      position: absolute;
+      top: 340px;
+      left: 20px;
+      width: 300px;
+      background: var(--ui-bg);
+      border: 1px solid var(--ui-border);
+      padding: 10px;
+      color: #ffe6c8;
+      font-size: 14px;
+      line-height: 1.45;
+      pointer-events: auto;
+    }
+
+    #leaderboard-ui {
+      position: absolute;
+      top: 120px;
+      right: 20px;
+      width: 250px;
+      background: var(--ui-bg);
+      border: 1px solid var(--ui-border);
+      padding: 10px;
+      color: #ffe6c8;
+      font-size: 14px;
+      pointer-events: auto;
+    }
+
+    #chat-ui {
+      position: absolute;
+      right: 20px;
+      bottom: 20px;
+      width: 360px;
+      background: var(--ui-bg);
+      border: 1px solid var(--ui-border);
+      padding: 10px;
+      color: #ffe6c8;
+      font-size: 14px;
+      pointer-events: auto;
+    }
+
+    #chat-log {
+      height: 180px;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.35);
+      padding: 6px;
+      margin-bottom: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+      white-space: pre-wrap;
+    }
+
+    #chat-input {
+      width: calc(100% - 80px);
+      box-sizing: border-box;
+      padding: 6px;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      border: 1px solid #7b4d25;
+      outline: none;
+    }
+
+    #chat-send {
+      width: 70px;
+      box-sizing: border-box;
+    }
+
+    #minimap {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      width: 180px;
+      height: 180px;
+      background: rgba(0,0,0,0.5);
+      border: 2px solid var(--ui-border);
+      border-radius: 50%;
+      overflow: hidden;
+      z-index: 15;
+      pointer-events: none;
+    }
+
+    #minimap-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 6px;
+      height: 6px;
+      background: #00ff00;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    #player-dots {
+      position: absolute;
+      inset: 0;
+    }
+
+    #worm-warning,
+    #combat-warning,
+    #save-indicator {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-weight: bold;
+      text-shadow: 0 0 15px #000;
+      display: none;
+      z-index: 20;
+    }
+
+    #worm-warning {
+      top: 14%;
+      font-size: 30px;
+      color: var(--danger);
+      animation: blinker 0.5s linear infinite;
+    }
+
+    #combat-warning {
+      top: 19%;
+      font-size: 22px;
+      color: #ffffff;
+    }
+
+    #save-indicator {
+      top: 24%;
+      font-size: 16px;
+      color: var(--green);
+    }
+
+    #blocker {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.72);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      pointer-events: auto;
+      cursor: pointer;
+      z-index: 30;
+      text-align: center;
+    }
+
+    .title {
+      font-size: 42px;
+      font-weight: bold;
+      color: #d35400;
+      margin-bottom: 16px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+    }
+
+    .instructions {
+      font-size: 18px;
+      line-height: 1.55;
+    }
+
+    @keyframes blinker { 50% { opacity: 0; } }
+  </style>
 </head>
 <body>
+  <div id="ui-layer">
+    <div id="crosshair"></div>
+    <div id="hud"></div>
+    <div id="spice-ui">MELANGE: <span id="spice-score">0</span></div>
+    <div id="worm-warning">WORMSIGN DETECTED - FIND ROCKS!</div>
+    <div id="combat-warning">COMBAT READY</div>
+    <div id="save-indicator">SAVED</div>
+  </div>
 
-    <div id="ui-layer">
-        <div id="crosshair"></div>
-        <div id="hud">
-            Location: Deep Desert<br>
-            Suit Status: Optimal<br>
-            Spice Proximity: Detecting...<br>
-            Online Players: 1
-        </div>
-        <div id="spice-ui">MELANGE COLLECTED: <span id="spice-score">0</span></div>
-        <div id="worm-warning">WORMSIGN DETECTED - FIND ROCKS!</div>
+  <div id="blocker">
+    <div>
+      <div class="title">Arrakis Exploration</div>
+      <div class="instructions">
+        <strong>Click to Enter the Desert</strong><br><br>
+        W, A, S, D = Move<br>
+        SPACE = Jump<br>
+        SHIFT = Sandwalk / Sprint<br>
+        MOUSE = Look around<br>
+        E = Interact / Gather / Build / Attack<br>
+        Q = Switch to White Sword<br>
+        1 = Foundation, 2 = Wall, 3 = Roof, 4 = Crafting Bench<br>
+        ESC = Pause
+      </div>
     </div>
+  </div>
 
-    <div id="blocker">
-        <div>
-            <div class="title">Arrakis Exploration</div>
-            <div class="instructions">
-                <strong>Click to Enter the Desert</strong><br><br>
-                W, A, S, D = Move<br>
-                SPACE = Jump<br>
-                MOUSE = Look around<br>
-                ESC = Pause
-            </div>
-        </div>
+  <div id="build-ui">
+    <div><strong>Building</strong></div>
+    <div>Mode: <span id="build-mode-label">None</span></div>
+    <div>Status: <span id="build-status">Select a piece</span></div>
+    <div>
+      <button id="mode-foundation">Foundation</button>
+      <button id="mode-wall">Wall</button>
+      <button id="mode-roof">Roof</button>
+      <button id="mode-bench">Bench</button>
+      <button id="mode-cancel">Cancel</button>
     </div>
-    <div id="minimap" style="
-        position: absolute; 
-        bottom: 20px; 
-        right: 20px; 
-        width: 150px; 
-        height: 150px; 
-        background: rgba(0, 0, 0, 0.5); 
-        border: 2px solid #d35400; 
-        border-radius: 50%; 
-        overflow: hidden; 
-        z-index: 15;">
-        <div style="
-            position: absolute; 
-            top: 50%; left: 50%; 
-            width: 6px; height: 6px; 
-            background: #00ff00; 
-            border-radius: 50%; 
-            transform: translate(-50%, -50%);"></div>
-        <div id="player-dots"></div>
+    <div id="weapon-ui">
+      <strong>Weapon</strong><br>
+      <button id="weapon-none">Hands</button>
+      <button id="weapon-sword">All White Sword</button>
     </div>
+    <div id="resource-ui">
+      <div>Water: <span id="water-score">100</span></div>
+      <div>Health: <span id="health-score">100</span></div>
+      <div>Wood: <span id="wood-score">0</span></div>
+      <div>Stone: <span id="stone-score">0</span></div>
+      <div>Fabric: <span id="fabric-score">0</span></div>
+      <div>Electronics: <span id="electronics-score">0</span></div>
+      <div>Stillsuit: <span id="stillsuit-score">No</span></div>
+    </div>
+  </div>
 
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
-            }
+  <div id="guild-ui">
+    <div><strong>Guild Exchange</strong></div>
+    <button id="buy-water">Buy Water (10 Melange)</button>
+    <button id="buy-wood">Buy Wood (8 Melange)</button>
+    <button id="buy-stone">Buy Stone (10 Melange)</button>
+    <button id="buy-fabric">Buy Fabric (12 Melange)</button>
+    <button id="buy-electronics">Buy Electronics (18 Melange)</button>
+    <button id="buy-heal">Buy Medical Gel (15 Melange)</button>
+    <div style="margin-top:6px;">Construction materials and water are purchased with melange.</div>
+  </div>
+
+  <div id="leaderboard-ui">
+    <div><strong>Melange Leaderboard</strong></div>
+    <div id="leaderboard-list" style="margin-top:6px; line-height:1.5;"></div>
+  </div>
+
+  <div id="chat-ui">
+    <div><strong>Live Chat</strong></div>
+    <div id="chat-log"></div>
+    <div style="display:flex; gap:6px;">
+      <input id="chat-input" type="text" maxlength="120" placeholder="Type message..." />
+      <button id="chat-send">Send</button>
+    </div>
+  </div>
+
+  <div id="minimap">
+    <div id="minimap-center"></div>
+    <div id="player-dots"></div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.158.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+    const { createClient } = supabase;
+
+    const SUPABASE_URL = 'https://clbjiyokjmovijgwybyu.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsYmppeW9ram1vdmlqZ3d5Ynl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNTQyMzEsImV4cCI6MjA5MDgzMDIzMX0.EY8uZZN8hEyncJoi-rswxnKeaeIBTuF_xkwBu-yvF7c';
+
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const SAVE_KEY = 'arrakis_save_v2';
+    const ROOM = 'arrakis_room';
+    const myId = Math.random().toString(36).substring(2, 10);
+    const playerName = 'Fremen-' + myId.slice(0, 4);
+
+    let scene, camera, renderer, controls;
+    let raycaster, clickRaycaster;
+    let terrain, terrainGeo;
+    const objects = [];
+    const interactables = [];
+    const structures = [];
+    const placedFoundations = new Map();
+    const placedWalls = new Map();
+    const placedRoofs = new Map();
+    const craftingBenches = [];
+
+    const otherPlayers = new Map();
+    let presenceChannel = null;
+    let chatChannel = null;
+
+    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, moveShift = false;
+    let canJump = false;
+    let prevTime = performance.now();
+
+    const velocity = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+
+    let spiceScore = 0;
+    let water = 100;
+    let health = 100;
+    let wood = 0;
+    let stone = 0;
+    let fabric = 0;
+    let electronics = 0;
+    let hasStillsuit = false;
+    let equippedWeapon = 'hands';
+    let buildMode = null;
+    let buildPreview = null;
+    let buildingGhost = null;
+
+    let wormState = 'idle';
+    let wormTimer = 0;
+    let sandworm = null;
+    let wormSignParticles = null;
+    let spiceParticles = null;
+    let sparkleSystem = null;
+
+    const spiceCrystals = [];
+    const enemies = [];
+    const chatMessages = [];
+
+    const world = {
+      terrainSize: 8000,
+      terrainSegments: 220,
+      worldScale: 4
+    };
+
+    const buildingCosts = {
+      foundation: { wood: 2, stone: 1 },
+      wall: { wood: 2, stone: 2 },
+      roof: { wood: 3, stone: 2 },
+      bench: { wood: 3, stone: 1, electronics: 1 }
+    };
+
+    const sword = {
+      range: 9,
+      damage: 25
+    };
+
+    init();
+    animate();
+
+    function saveGame() {
+      const data = {
+        spiceScore, water, health, wood, stone, fabric, electronics, hasStillsuit, equippedWeapon,
+        player: {
+          x: camera.position.x, y: camera.position.y, z: camera.position.z, rotY: camera.rotation.y
+        },
+        structures: serializeStructures()
+      };
+      localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+      flashSave();
+    }
+
+    function loadGame() {
+      try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        spiceScore = data.spiceScore ?? 0;
+        water = data.water ?? 100;
+        health = data.health ?? 100;
+        wood = data.wood ?? 0;
+        stone = data.stone ?? 0;
+        fabric = data.fabric ?? 0;
+        electronics = data.electronics ?? 0;
+        hasStillsuit = !!data.hasStillsuit;
+        equippedWeapon = data.equippedWeapon ?? 'hands';
+        if (data.player) {
+          camera.position.set(data.player.x ?? 0, data.player.y ?? 10, data.player.z ?? 0);
+          camera.rotation.y = data.player.rotY ?? 0;
         }
-    </script>
+      } catch {}
+    }
 
-    <script type="module">
-        const { createClient } = supabase;
-        const supabaseClient = createClient('https://clbjiyokjmovijgwybyu.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsYmppeW9ram1vdmlqZ3d5Ynl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNTQyMzEsImV4cCI6MjA5MDgzMDIzMX0.EY8uZZN8hEyncJoi-rswxnKeaeIBTuF_xkwBu-yvF7c');
-        const otherPlayers = new Map();
-        const myId = Math.random().toString(36).substring(7);
+    function flashSave() {
+      const el = document.getElementById('save-indicator');
+      el.style.display = 'block';
+      clearTimeout(flashSave._t);
+      flashSave._t = setTimeout(() => el.style.display = 'none', 700);
+    }
 
-        function createHumanMesh() {
-           const group = new THREE.Group();
-           const mat = new THREE.MeshLambertMaterial({ color: 0x5d4037 });
+    function updateHUD() {
+      document.getElementById('hud').innerHTML =
+        `Location: Deep Desert<br>` +
+        `Suit Status: ${health > 0 ? 'Optimal' : 'Critical'}<br>` +
+        `Water: ${Math.floor(water)}<br>` +
+        `Health: ${Math.floor(health)}<br>` +
+        `Online Players: ${1 + otherPlayers.size}<br>` +
+        `Weapon: ${equippedWeapon === 'sword' ? 'All White Sword' : 'Hands'}<br>` +
+        `Build: ${buildMode ? buildMode : 'None'}`;
 
-            const head = new THREE.Mesh(new THREE.SphereGeometry(2, 8, 8), mat);
-            head.position.y = 16;
-            group.add(head);
+      document.getElementById('spice-score').innerText = Math.floor(spiceScore);
+      document.getElementById('water-score').innerText = Math.floor(water);
+      document.getElementById('health-score').innerText = Math.floor(health);
+      document.getElementById('wood-score').innerText = wood;
+      document.getElementById('stone-score').innerText = stone;
+      document.getElementById('fabric-score').innerText = fabric;
+      document.getElementById('electronics-score').innerText = electronics;
+      document.getElementById('stillsuit-score').innerText = hasStillsuit ? 'Yes' : 'No';
+      document.getElementById('build-mode-label').innerText = buildMode ?? 'None';
+      document.getElementById('build-status').innerText = buildMode ? `Placing ${buildMode}` : 'Select a piece';
+    }
 
-           const torso = new THREE.Mesh(new THREE.BoxGeometry(4, 8, 2), mat);
-           torso.position.y = 11;
-           group.add(torso);
+    function updateLeaderboard() {
+      const list = document.getElementById('leaderboard-list');
+      const board = [
+        { name: playerName, score: spiceScore, me: true },
+        ...Array.from(otherPlayers.values()).map(p => ({ name: p.name || 'Player', score: p.melange || 0, me: false }))
+      ].sort((a, b) => b.score - a.score).slice(0, 8);
 
-           const armGeo = new THREE.BoxGeometry(1, 7, 1);
-           const leftArm = new THREE.Mesh(armGeo, mat);
-           leftArm.position.set(-2.5, 11, 0);
-           group.add(leftArm);
+      list.innerHTML = board.map((p, i) => `${i + 1}. ${p.name}${p.me ? ' (you)' : ''} - ${Math.floor(p.score)}`).join('<br>');
+    }
 
-          const rightArm = new THREE.Mesh(armGeo, mat);
-           rightArm.position.set(2.5, 11, 0);
-          group.add(rightArm);
+    function addChatLine(text) {
+      const log = document.getElementById('chat-log');
+      const line = document.createElement('div');
+      line.textContent = text;
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
 
-          const legGeo = new THREE.BoxGeometry(1.5, 8, 1.5);
-           const leftLeg = new THREE.Mesh(legGeo, mat);
-            leftLeg.position.set(-1, 4, 0);
-            group.add(leftLeg);
+    function initChatUI() {
+      document.getElementById('chat-send').onclick = sendChat;
+      document.getElementById('chat-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') sendChat();
+      });
+    }
 
-         const rightLeg = new THREE.Mesh(legGeo, mat);
-          rightLeg.position.set(1, 4, 0);
-          group.add(rightLeg);
-
-         return group;
+    async function sendChat() {
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text || !chatChannel) return;
+      input.value = '';
+      await chatChannel.send({
+        type: 'broadcast',
+        event: 'chat',
+        payload: {
+          id: myId,
+          name: playerName,
+          text,
+          ts: Date.now()
         }
+      });
+    }
 
-        import * as THREE from 'three';
-        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+    function createHumanMesh(color = 0x5d4037) {
+      const group = new THREE.Group();
+      const mat = new THREE.MeshLambertMaterial({ color });
 
-        let camera, scene, renderer, controls;
-        let geometry, material, terrain;
-        const objects = [];
-        let raycaster;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(2, 8, 8), mat);
+      head.position.y = 16;
+      group.add(head);
 
-        let moveForward = false;
-        let moveBackward = false;
-        let moveLeft = false;
-        let moveRight = false;
-        let canJump = false;
-        let moveShift = false;
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(4, 8, 2), mat);
+      torso.position.y = 11;
+      group.add(torso);
 
-        let prevTime = performance.now();
-        const velocity = new THREE.Vector3();
-        const direction = new THREE.Vector3();
+      const armGeo = new THREE.BoxGeometry(1, 7, 1);
+      const leftArm = new THREE.Mesh(armGeo, mat);
+      leftArm.position.set(-2.5, 11, 0);
+      group.add(leftArm);
 
-        let spiceParticles;
-        const clock = new THREE.Clock();
+      const rightArm = new THREE.Mesh(armGeo, mat);
+      rightArm.position.set(2.5, 11, 0);
+      group.add(rightArm);
 
-        let spiceScore = 0;
-        const spiceCrystals = [];
+      const legGeo = new THREE.BoxGeometry(1.5, 8, 1.5);
+      const leftLeg = new THREE.Mesh(legGeo, mat);
+      leftLeg.position.set(-1, 4, 0);
+      group.add(leftLeg);
 
-        const rocks = [];
-        let sandworm = null;
-        let wormState = "idle";
-        let wormTimer = 0;
-        let wormSignParticles;
-        let clickRaycaster = new THREE.Raycaster();
+      const rightLeg = new THREE.Mesh(legGeo, mat);
+      rightLeg.position.set(1, 4, 0);
+      group.add(rightLeg);
 
-        let sparkleSystem;
-        let presenceChannel = null;
-        let onlinePlayerCount = 1;
+      return group;
+    }
 
-        init();
-        animate();
+    function createSwordMesh() {
+      const group = new THREE.Group();
+      const bladeMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        emissive: 0xffffff,
+        emissiveIntensity: 0.55,
+        metalness: 1,
+        roughness: 0.1
+      });
+      const hiltMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 1, roughness: 0.4 });
 
-        function updatePlayerCountHUD() {
-            const hud = document.getElementById('hud');
-            hud.innerHTML =
-                `Location: Deep Desert<br>` +
-                `Suit Status: Optimal<br>` +
-                `Spice Proximity: Detecting...<br>` +
-                `Online Players: ${onlinePlayerCount}`;
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.2, 7, 0.5), bladeMat);
+      blade.position.y = 4.5;
+      group.add(blade);
+
+      const guard = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.25, 0.7), hiltMat);
+      guard.position.y = 1.2;
+      group.add(guard);
+
+      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 1.5, 10), hiltMat);
+      grip.position.y = 0.2;
+      group.add(grip);
+
+      return group;
+    }
+
+    function init() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xcc8855);
+      scene.fog = new THREE.FogExp2(0xcc8855, 0.0012);
+
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 12000);
+      camera.position.y = 10;
+
+      const ambient = new THREE.HemisphereLight(0xeeeeff, 0x777788, 0.6);
+      ambient.position.set(0.5, 1, 0.75);
+      scene.add(ambient);
+
+      const dirLight = new THREE.DirectionalLight(0xffaa55, 1.15);
+      dirLight.position.set(100, 200, 50);
+      scene.add(dirLight);
+
+      controls = new PointerLockControls(camera, document.body);
+      scene.add(controls.getObject());
+
+      const blocker = document.getElementById('blocker');
+      blocker.addEventListener('click', () => controls.lock());
+      controls.addEventListener('lock', () => blocker.style.display = 'none');
+      controls.addEventListener('unlock', () => blocker.style.display = 'flex');
+
+      document.addEventListener('keydown', onKeyDown);
+      document.addEventListener('keyup', onKeyUp);
+      document.addEventListener('mousedown', onMouseDown);
+      window.addEventListener('resize', onWindowResize);
+      window.addEventListener('beforeunload', saveGame);
+
+      raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 30);
+      clickRaycaster = new THREE.Raycaster();
+
+      buildTerrain();
+      buildSpice();
+      buildRocksAndPlateaus();
+      createSandworm();
+      spawnEnemies();
+      createStartingStructures();
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      initUI();
+      initSupabase();
+      initChatUI();
+      loadGame();
+      updateHUD();
+      updateLeaderboard();
+      setInterval(saveGame, 30000);
+      setInterval(updateLeaderboard, 2000);
+      setInterval(updateWaterDrain, 1000);
+    }
+
+    function buildTerrain() {
+      terrainGeo = new THREE.PlaneGeometry(world.terrainSize, world.terrainSize, world.terrainSegments, world.terrainSegments);
+      terrainGeo.rotateX(-Math.PI / 2);
+
+      const pos = terrainGeo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const z = pos.getZ(i);
+        let y = Math.sin(x / 120) * Math.cos(z / 120) * 35;
+        y += Math.sin(x / 500) * Math.cos(z / 500) * 90;
+        y += Math.sin((x + z) / 250) * 20;
+        pos.setY(i, y);
+      }
+      terrainGeo.computeVertexNormals();
+
+      const material = new THREE.MeshLambertMaterial({ color: 0xd4a373 });
+      terrain = new THREE.Mesh(terrainGeo, material);
+      scene.add(terrain);
+      objects.push(terrain);
+    }
+
+    function buildSpice() {
+      const particleCount = 12000;
+      const geo = new THREE.BufferGeometry();
+      const arr = new Float32Array(particleCount * 3);
+      for (let i = 0; i < arr.length; i += 3) {
+        arr[i] = (Math.random() - 0.5) * 4000;
+        arr[i + 1] = Math.random() * 80;
+        arr[i + 2] = (Math.random() - 0.5) * 4000;
+      }
+      geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+      spiceParticles = new THREE.Points(geo, new THREE.PointsMaterial({
+        color: 0xff5500,
+        size: 0.6,
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending
+      }));
+      scene.add(spiceParticles);
+
+      const crystalGeo = new THREE.DodecahedronGeometry(0.8, 0);
+      const crystalMat = new THREE.MeshStandardMaterial({
+        color: 0xff8800,
+        emissive: 0xff4400,
+        roughness: 0,
+        metalness: 1
+      });
+
+      for (let i = 0; i < 120; i++) {
+        const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+        const x = (Math.random() - 0.5) * 3200;
+        const z = (Math.random() - 0.5) * 3200;
+        const y = terrainHeightAt(x, z);
+        crystal.position.set(x, y + 0.2, z);
+        crystal.rotation.set(Math.random(), Math.random(), Math.random());
+        scene.add(crystal);
+        spiceCrystals.push(crystal);
+      }
+
+      const sparkleGeo = new THREE.BufferGeometry();
+      const sparkleCount = 12000;
+      const sparklePos = new Float32Array(sparkleCount * 3);
+      for (let i = 0; i < sparklePos.length; i++) sparklePos[i] = (Math.random() - 0.5) * 4000;
+      sparkleGeo.setAttribute('position', new THREE.BufferAttribute(sparklePos, 3));
+      sparkleSystem = new THREE.Points(
+        sparkleGeo,
+        new THREE.PointsMaterial({
+          color: 0xffcc00,
+          size: 0.15,
+          transparent: true,
+          opacity: 0.5,
+          blending: THREE.AdditiveBlending
+        })
+      );
+      scene.add(sparkleSystem);
+    }
+
+    function buildRocksAndPlateaus() {
+      const plateauMat = new THREE.MeshStandardMaterial({
+        color: 0x362c24,
+        roughness: 1,
+        flatShading: true
+      });
+
+      for (let i = 0; i < 16; i++) {
+        const size = 100 + Math.random() * 90;
+        const geo = new THREE.IcosahedronGeometry(size, 3);
+        const pos = geo.attributes.position;
+        for (let j = 0; j < pos.count; j++) {
+          const vx = pos.getX(j);
+          const vy = pos.getY(j);
+          const vz = pos.getZ(j);
+          const noise = Math.sin(vx * 0.12) * Math.cos(vz * 0.12) * 7 + Math.sin(vy * 0.08) * 4;
+          pos.setXYZ(j, vx + noise, vy + noise, vz + noise);
         }
+        geo.computeVertexNormals();
+        const rock = new THREE.Mesh(geo, plateauMat);
+        const x = (Math.random() - 0.5) * 6000;
+        const z = (Math.random() - 0.5) * 6000;
+        rock.position.set(x, terrainHeightAt(x, z) - 15, z);
+        rock.scale.set(1, 0.35 + Math.random() * 0.15, 1);
+        rock.rotation.y = Math.random() * Math.PI;
+        scene.add(rock);
+        objects.push(rock);
+      }
+    }
 
-        function updateMinimap() {
-            const dotContainer = document.getElementById('player-dots');
-            dotContainer.innerHTML = '';
+    function createSandworm() {
+      sandworm = new THREE.Group();
+      const segmentCount = 22;
+      for (let i = 0; i < segmentCount; i++) {
+        const radius = 15 - i * 0.45;
+        const seg = new THREE.Mesh(
+          new THREE.TorusGeometry(radius, 4, 8, 16),
+          new THREE.MeshLambertMaterial({ color: 0x3d2b1f })
+        );
+        seg.rotation.x = Math.PI / 2;
+        seg.position.z = i * 8;
+        sandworm.add(seg);
+      }
+      const mouth = new THREE.Mesh(
+        new THREE.CylinderGeometry(15, 15, 5, 12, 1, true),
+        new THREE.MeshBasicMaterial({ color: 0x000000 })
+      );
+      mouth.rotation.x = Math.PI / 2;
+      mouth.position.z = -2;
+      sandworm.add(mouth);
+      sandworm.position.y = -200;
+      scene.add(sandworm);
 
-            const MAP_SCALE = 0.2;
-            const centerX = 75;
-            const centerY = 75;
+      const signGeo = new THREE.BufferGeometry();
+      const signPos = new Float32Array(360 * 3);
+      signGeo.setAttribute('position', new THREE.BufferAttribute(signPos, 3));
+      wormSignParticles = new THREE.Points(
+        signGeo,
+        new THREE.PointsMaterial({ color: 0xd4a373, size: 4, transparent: true, opacity: 0.5 })
+      );
+      scene.add(wormSignParticles);
+    }
 
-            otherPlayers.forEach((data) => {
-                const relX = (data.targetPos.x - camera.position.x) * MAP_SCALE;
-                const relZ = (data.targetPos.z - camera.position.z) * MAP_SCALE;
-                const dist = Math.sqrt(relX * relX + relZ * relZ);
+    function spawnEnemies() {
+      for (let i = 0; i < 10; i++) {
+        const enemy = {
+          mesh: createHumanMesh(0x8a3b2c),
+          health: 60,
+          speed: 18 + Math.random() * 8,
+          target: new THREE.Vector3(),
+          attackTimer: 0
+        };
+        const x = (Math.random() - 0.5) * 5000;
+        const z = (Math.random() - 0.5) * 5000;
+        enemy.mesh.position.set(x, terrainHeightAt(x, z) + 8, z);
+        scene.add(enemy.mesh);
+        enemies.push(enemy);
+      }
+    }
 
-                if (dist < 70) {
-                    const dot = document.createElement('div');
-                    dot.style.position = 'absolute';
-                    dot.style.width = '6px';
-                    dot.style.height = '6px';
-                    dot.style.background = data.isSandwalking ? '#ffd166' : 'red';
-                    dot.style.borderRadius = '50%';
-                    dot.style.left = (centerX + relX) + 'px';
-                    dot.style.top = (centerY + relZ) + 'px';
-                    dot.style.transform = 'translate(-50%, -50%)';
-                    dotContainer.appendChild(dot);
-                }
-            });
+    function createStartingStructures() {
+      const x = 0, z = 0;
+      placeStructure('foundation', x, terrainHeightAt(x, z), z, true);
+      placeStructure('bench', x + 18, terrainHeightAt(x + 18, z), z, true);
+    }
+
+    function initUI() {
+      document.getElementById('mode-foundation').onclick = () => setBuildMode('foundation');
+      document.getElementById('mode-wall').onclick = () => setBuildMode('wall');
+      document.getElementById('mode-roof').onclick = () => setBuildMode('roof');
+      document.getElementById('mode-bench').onclick = () => setBuildMode('bench');
+      document.getElementById('mode-cancel').onclick = () => setBuildMode(null);
+
+      document.getElementById('weapon-none').onclick = () => setWeapon('hands');
+      document.getElementById('weapon-sword').onclick = () => setWeapon('sword');
+
+      document.getElementById('buy-water').onclick = () => buyResource('water');
+      document.getElementById('buy-wood').onclick = () => buyResource('wood');
+      document.getElementById('buy-stone').onclick = () => buyResource('stone');
+      document.getElementById('buy-fabric').onclick = () => buyResource('fabric');
+      document.getElementById('buy-electronics').onclick = () => buyResource('electronics');
+      document.getElementById('buy-heal').onclick = () => buyResource('heal');
+    }
+
+    function setWeapon(type) {
+      equippedWeapon = type;
+      updateHUD();
+      saveGame();
+    }
+
+    function setBuildMode(mode) {
+      buildMode = mode;
+      if (buildPreview) {
+        scene.remove(buildPreview);
+        buildPreview = null;
+      }
+      if (mode) createBuildPreview(mode);
+      updateHUD();
+    }
+
+    function createBuildPreview(mode) {
+      const color = 0xffffff;
+      let mesh;
+      if (mode === 'foundation') mesh = new THREE.Mesh(new THREE.BoxGeometry(12, 2, 12), new THREE.MeshBasicMaterial({ color, wireframe: true }));
+      if (mode === 'wall') mesh = new THREE.Mesh(new THREE.BoxGeometry(12, 10, 1.5), new THREE.MeshBasicMaterial({ color, wireframe: true }));
+      if (mode === 'roof') mesh = new THREE.Mesh(new THREE.BoxGeometry(13, 2, 13), new THREE.MeshBasicMaterial({ color, wireframe: true }));
+      if (mode === 'bench') mesh = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 4), new THREE.MeshBasicMaterial({ color, wireframe: true }));
+      if (!mesh) return;
+      buildPreview = mesh;
+      scene.add(buildPreview);
+    }
+
+    function buyResource(item) {
+      if (item === 'water' && spiceScore >= 10) {
+        spiceScore -= 10;
+        water = Math.min(100, water + 40);
+      } else if (item === 'wood' && spiceScore >= 8) {
+        spiceScore -= 8;
+        wood += 3;
+      } else if (item === 'stone' && spiceScore >= 10) {
+        spiceScore -= 10;
+        stone += 3;
+      } else if (item === 'fabric' && spiceScore >= 12) {
+        spiceScore -= 12;
+        fabric += 2;
+      } else if (item === 'electronics' && spiceScore >= 18) {
+        spiceScore -= 18;
+        electronics += 1;
+      } else if (item === 'heal' && spiceScore >= 15) {
+        spiceScore -= 15;
+        health = Math.min(100, health + 35);
+      } else {
+        return;
+      }
+      updateHUD();
+      saveGame();
+    }
+
+    function terrainHeightAt(x, z) {
+      return Math.sin(x / 120) * Math.cos(z / 120) * 35 + Math.sin(x / 500) * Math.cos(z / 500) * 90 + Math.sin((x + z) / 250) * 20;
+    }
+
+    function keyForGrid(x, z) {
+      return `${Math.round(x / 12) * 12}_${Math.round(z / 12) * 12}`;
+    }
+
+    function serializeStructures() {
+      return structures.map(s => ({
+        type: s.type,
+        x: s.mesh.position.x,
+        y: s.mesh.position.y,
+        z: s.mesh.position.z,
+        rotY: s.mesh.rotation.y
+      }));
+    }
+
+    function placeStructure(type, x, y, z, free = false) {
+      if (!free && !canPlaceStructure(type, x, z)) return false;
+
+      const key = keyForGrid(x, z);
+      if (!free) {
+        const costs = buildingCosts[type];
+        if (!spendMaterials(costs)) return false;
+      }
+
+      let mesh;
+      if (type === 'foundation') {
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(12, 2, 12),
+          new THREE.MeshStandardMaterial({ color: 0x7c5b39, roughness: 1 })
+        );
+        mesh.position.set(x, y + 1, z);
+        placedFoundations.set(key, true);
+      } else if (type === 'wall') {
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(12, 10, 1.5),
+          new THREE.MeshStandardMaterial({ color: 0x8f6a45, roughness: 1 })
+        );
+        mesh.position.set(x, y + 6, z);
+        placedWalls.set(key, true);
+      } else if (type === 'roof') {
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(13, 2, 13),
+          new THREE.MeshStandardMaterial({ color: 0x6f4b2e, roughness: 1 })
+        );
+        mesh.position.set(x, y + 11, z);
+        placedRoofs.set(key, true);
+      } else if (type === 'bench') {
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(6, 4, 4),
+          new THREE.MeshStandardMaterial({ color: 0x4a3422, roughness: 1 })
+        );
+        mesh.position.set(x, y + 2, z);
+        craftingBenches.push(mesh);
+      } else {
+        return false;
+      }
+
+      mesh.rotation.y = 0;
+      scene.add(mesh);
+      structures.push({ type, mesh });
+      objects.push(mesh);
+      saveGame();
+      return true;
+    }
+
+    function spendMaterials(costs) {
+      if ((wood < (costs.wood || 0)) || (stone < (costs.stone || 0)) || (electronics < (costs.electronics || 0))) return false;
+      wood -= costs.wood || 0;
+      stone -= costs.stone || 0;
+      electronics -= costs.electronics || 0;
+      updateHUD();
+      return true;
+    }
+
+    function canPlaceStructure(type, x, z) {
+      const key = keyForGrid(x, z);
+      if (type === 'foundation') return !placedFoundations.has(key);
+      if (type === 'wall') return placedFoundations.has(key) && !placedWalls.has(key);
+      if (type === 'roof') return placedWalls.has(key) && !placedRoofs.has(key);
+      if (type === 'bench') return placedFoundations.has(key) && !isOccupied(x, z);
+      return false;
+    }
+
+    function isOccupied(x, z) {
+      return structures.some(s => s.mesh.position.distanceTo(new THREE.Vector3(x, s.mesh.position.y, z)) < 4);
+    }
+
+    function onKeyDown(event) {
+      switch (event.code) {
+        case 'KeyW': moveForward = true; break;
+        case 'KeyA': moveLeft = true; break;
+        case 'KeyS': moveBackward = true; break;
+        case 'KeyD': moveRight = true; break;
+        case 'ShiftLeft': moveShift = true; break;
+        case 'KeyQ': setWeapon('sword'); break;
+        case 'Digit1': setBuildMode('foundation'); break;
+        case 'Digit2': setBuildMode('wall'); break;
+        case 'Digit3': setBuildMode('roof'); break;
+        case 'Digit4': setBuildMode('bench'); break;
+        case 'Escape': setBuildMode(null); break;
+        case 'Space':
+          if (canJump) velocity.y += 350;
+          canJump = false;
+          break;
+        case 'KeyE':
+          interact();
+          break;
+      }
+    }
+
+    function onKeyUp(event) {
+      switch (event.code) {
+        case 'KeyW': moveForward = false; break;
+        case 'KeyA': moveLeft = false; break;
+        case 'KeyS': moveBackward = false; break;
+        case 'KeyD': moveRight = false; break;
+        case 'ShiftLeft': moveShift = false; break;
+      }
+    }
+
+    function onMouseDown() {
+      if (!controls.isLocked) return;
+      if (buildMode) {
+        tryBuildAtCrosshair();
+        return;
+      }
+      if (equippedWeapon === 'sword') attackWithSword();
+      else collectWithHands();
+    }
+
+    function tryBuildAtCrosshair() {
+      const point = getCrosshairGroundPoint();
+      if (!point) return;
+      const x = Math.round(point.x / 12) * 12;
+      const z = Math.round(point.z / 12) * 12;
+      const y = terrainHeightAt(x, z);
+      const success = placeStructure(buildMode, x, y, z);
+      if (success) updateHUD();
+    }
+
+    function getCrosshairGroundPoint() {
+      clickRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+      const intersects = clickRaycaster.intersectObject(terrain);
+      if (!intersects.length) return null;
+      return intersects[0].point;
+    }
+
+    function attackWithSword() {
+      const origin = camera.position.clone();
+      const forward = new THREE.Vector3();
+      camera.getWorldDirection(forward);
+      let hit = false;
+
+      enemies.forEach(enemy => {
+        if (enemy.health <= 0) return;
+        const toEnemy = enemy.mesh.position.clone().sub(origin);
+        const dist = toEnemy.length();
+        toEnemy.normalize();
+        if (dist <= sword.range && forward.dot(toEnemy) > 0.7) {
+          enemy.health -= sword.damage;
+          hit = true;
+          if (enemy.health <= 0) {
+            scene.remove(enemy.mesh);
+            spiceScore += 30;
+          }
         }
+      });
 
-        function syncPresenceToMinimap() {
-            updateMinimap();
+      otherPlayers.forEach((p) => {
+        if (!p.mesh) return;
+        const dist = p.mesh.position.distanceTo(origin);
+        if (dist <= sword.range) {
+          p.health = Math.max(0, (p.health || 100) - 10);
         }
+      });
 
-        function initPresenceMultiplayer() {
-            presenceChannel = supabaseClient.channel('arrakis_room', {
-                config: {
-                    presence: { key: myId },
-                    broadcast: { self: false }
-                }
-            });
+      if (hit) {
+        document.getElementById('combat-warning').style.display = 'block';
+        clearTimeout(attackWithSword._t);
+        attackWithSword._t = setTimeout(() => document.getElementById('combat-warning').style.display = 'none', 500);
+        updateHUD();
+        saveGame();
+      }
+    }
 
-            presenceChannel
-                .on('presence', { event: 'sync' }, () => {
-                    const state = presenceChannel.presenceState();
-                    const seen = new Set();
+    function collectWithHands() {
+      const intersects = clickRaycaster.intersectObjects(spiceCrystals, false);
+      if (intersects.length > 0) {
+        const target = intersects[0].object;
+        if (target.visible) {
+          target.visible = false;
+          spiceScore += 50;
+          updateHUD();
+          saveGame();
+        }
+      }
+    }
 
-                    Object.values(state).forEach((entries) => {
-                        entries.forEach((p) => {
-                            if (!p.id || p.id === myId) return;
-                            seen.add(p.id);
+    function interact() {
+      if (tryCraftStillsuit()) return;
+      if (tryPickUpNearbyResource()) return;
+      if (buildMode) tryBuildAtCrosshair();
+    }
 
-                            if (!otherPlayers.has(p.id)) {
-                                const mesh = createHumanMesh();
-                                scene.add(mesh);
-                                otherPlayers.set(p.id, {
-                                    mesh,
-                                    targetPos: new THREE.Vector3(),
-                                    targetRot: 0,
-                                    isSandwalking: false
-                                });
-                            }
+    function tryPickUpNearbyResource() {
+      const p = camera.position;
+      const nearBench = craftingBenches.some(b => b.position.distanceTo(p) < 8);
+      if (nearBench && wood >= 1 && fabric >= 1 && !hasStillsuit) {
+        return false;
+      }
+      return false;
+    }
 
-                            const data = otherPlayers.get(p.id);
-                            data.targetPos.set(p.x ?? 0, p.y ?? 10, p.z ?? 0);
-                            data.targetRot = p.rot ?? 0;
-                            data.isSandwalking = !!p.isSandwalking;
-                        });
-                    });
+    function tryCraftStillsuit() {
+      const nearBench = craftingBenches.some(b => b.position.distanceTo(camera.position) < 10);
+      if (!nearBench) return false;
+      if (hasStillsuit) return false;
+      if (wood >= 2 && fabric >= 2 && electronics >= 1) {
+        wood -= 2;
+        fabric -= 2;
+        electronics -= 1;
+        hasStillsuit = true;
+        water = Math.min(100, water + 20);
+        updateHUD();
+        saveGame();
+        return true;
+      }
+      return false;
+    }
 
-                    otherPlayers.forEach((value, id) => {
-                        if (!seen.has(id)) {
-                            scene.remove(value.mesh);
-                            otherPlayers.delete(id);
-                        }
-                    });
+    function updateWaterDrain() {
+      if (!controls.isLocked) return;
+      const baseDrain = moveShift ? 0.4 : 0.8;
+      const drain = hasStillsuit ? baseDrain * 0.45 : baseDrain;
+      water -= drain;
+      if (water <= 0) {
+        water = 0;
+        health -= 1.5;
+        if (health <= 0) {
+          health = 0;
+          location.reload();
+        }
+      }
+      updateHUD();
+      saveGame();
+    }
 
-                    onlinePlayerCount = 1 + seen.size;
-                    updatePlayerCountHUD();
-                    syncPresenceToMinimap();
-                })
-                .on('presence', { event: 'join' }, () => {
-                    updatePlayerCountHUD();
-                    syncPresenceToMinimap();
-                })
-                .on('presence', { event: 'leave' }, () => {
-                    updatePlayerCountHUD();
-                    syncPresenceToMinimap();
-                })
-                .on('broadcast', { event: 'move' }, ({ payload }) => {
-                    if (!payload || payload.id === myId) return;
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
 
-                    if (!otherPlayers.has(payload.id)) {
-                        const mesh = createHumanMesh();
-                        scene.add(mesh);
-                        otherPlayers.set(payload.id, {
-                            mesh,
-                            targetPos: new THREE.Vector3(),
-                            targetRot: 0,
-                            isSandwalking: false
-                        });
-                    }
+    function initSupabase() {
+      presenceChannel = supabaseClient.channel(ROOM, {
+        config: {
+          presence: { key: myId },
+          broadcast: { self: false }
+        }
+      });
 
-                    const data = otherPlayers.get(payload.id);
-                    data.targetPos.set(payload.pos.x, payload.pos.y, payload.pos.z);
-                    data.targetRot = payload.rot;
-                    data.isSandwalking = payload.isSandwalking;
-                    syncPresenceToMinimap();
-                })
-                .subscribe(async (status) => {
-                    if (status === 'SUBSCRIBED') {
-                        await presenceChannel.track({
-                            id: myId,
-                            x: camera.position.x,
-                            y: camera.position.y,
-                            z: camera.position.z,
-                            rot: camera.rotation.y,
-                            isSandwalking: moveShift
-                        });
-                        updatePlayerCountHUD();
-                    }
+      presenceChannel
+        .on('presence', { event: 'sync' }, () => {
+          const state = presenceChannel.presenceState();
+          const seen = new Set();
+
+          Object.values(state).forEach(entries => {
+            entries.forEach(p => {
+              if (!p.id || p.id === myId) return;
+              seen.add(p.id);
+              if (!otherPlayers.has(p.id)) {
+                const mesh = createHumanMesh(0x6f4d3c);
+                scene.add(mesh);
+                otherPlayers.set(p.id, {
+                  mesh,
+                  targetPos: new THREE.Vector3(),
+                  targetRot: 0,
+                  isSandwalking: false,
+                  health: p.health ?? 100,
+                  melange: p.melange ?? 0,
+                  name: p.name ?? 'Player'
                 });
+              }
+              const data = otherPlayers.get(p.id);
+              data.targetPos.set(p.x ?? 0, p.y ?? 10, p.z ?? 0);
+              data.targetRot = p.rot ?? 0;
+              data.isSandwalking = !!p.isSandwalking;
+              data.health = p.health ?? 100;
+              data.melange = p.melange ?? 0;
+              data.name = p.name ?? 'Player';
+            });
+          });
 
-            setInterval(async () => {
-                if (!presenceChannel || !controls.isLocked) return;
+          otherPlayers.forEach((value, id) => {
+            if (!seen.has(id)) {
+              scene.remove(value.mesh);
+              otherPlayers.delete(id);
+            }
+          });
 
-                await presenceChannel.track({
-                    id: myId,
-                    x: camera.position.x,
-                    y: camera.position.y,
-                    z: camera.position.z,
-                    rot: camera.rotation.y,
-                    isSandwalking: moveShift
-                });
+          updateHUD();
+          updateLeaderboard();
+        })
+        .on('broadcast', { event: 'move' }, ({ payload }) => {
+          if (!payload || payload.id === myId) return;
+          if (!otherPlayers.has(payload.id)) {
+            const mesh = createHumanMesh(0x6f4d3c);
+            scene.add(mesh);
+            otherPlayers.set(payload.id, {
+              mesh,
+              targetPos: new THREE.Vector3(),
+              targetRot: 0,
+              isSandwalking: false,
+              health: 100,
+              melange: 0,
+              name: payload.name || 'Player'
+            });
+          }
+          const data = otherPlayers.get(payload.id);
+          data.targetPos.set(payload.pos.x, payload.pos.y, payload.pos.z);
+          data.targetRot = payload.rot;
+          data.isSandwalking = payload.isSandwalking;
+          data.health = payload.health ?? data.health;
+          data.melange = payload.melange ?? data.melange;
+          data.name = payload.name ?? data.name;
+          updateLeaderboard();
+        })
+        .on('broadcast', { event: 'chat' }, ({ payload }) => {
+          if (!payload) return;
+          chatMessages.push(payload);
+          addChatLine(`${payload.name}: ${payload.text}`);
+        })
+        .subscribe(async status => {
+          if (status === 'SUBSCRIBED') {
+            await presenceChannel.track({
+              id: myId,
+              name: playerName,
+              x: camera.position.x,
+              y: camera.position.y,
+              z: camera.position.z,
+              rot: camera.rotation.y,
+              isSandwalking: moveShift,
+              health,
+              melange: spiceScore
+            });
+          }
+        });
 
-                presenceChannel.send({
-                    type: 'broadcast',
-                    event: 'move',
-                    payload: {
-                        id: myId,
-                        pos: {
-                            x: camera.position.x,
-                            y: camera.position.y,
-                            z: camera.position.z
-                        },
-                        rot: camera.rotation.y,
-                        isSandwalking: moveShift
-                    }
-                });
-            }, 100);
+      chatChannel = presenceChannel;
+      setInterval(syncPresence, 100);
+    }
+
+    async function syncPresence() {
+      if (!presenceChannel || !controls.isLocked) return;
+      await presenceChannel.track({
+        id: myId,
+        name: playerName,
+        x: camera.position.x,
+        y: camera.position.y,
+        z: camera.position.z,
+        rot: camera.rotation.y,
+        isSandwalking: moveShift,
+        health,
+        melange: spiceScore
+      });
+
+      await presenceChannel.send({
+        type: 'broadcast',
+        event: 'move',
+        payload: {
+          id: myId,
+          name: playerName,
+          pos: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+          rot: camera.rotation.y,
+          isSandwalking: moveShift,
+          health,
+          melange: spiceScore
+        }
+      });
+    }
+
+    function updateMultiplayer(delta, time) {
+      otherPlayers.forEach(data => {
+        data.mesh.position.lerp(
+          new THREE.Vector3(data.targetPos.x, data.targetPos.y - 18, data.targetPos.z),
+          0.1
+        );
+        data.mesh.rotation.y = THREE.MathUtils.lerp(data.mesh.rotation.y, data.targetRot, 0.1);
+        data.mesh.rotation.z = data.isSandwalking ? Math.sin(time * 0.005) * 0.1 : 0;
+      });
+    }
+
+    function updateEnemies(delta) {
+      const p = camera.position;
+      enemies.forEach(enemy => {
+        if (enemy.health <= 0) return;
+        const dir = p.clone().sub(enemy.mesh.position);
+        const dist = dir.length();
+        dir.normalize();
+        if (dist < 260) {
+          enemy.mesh.position.addScaledVector(dir, enemy.speed * delta * 0.6);
+          enemy.mesh.lookAt(p);
+          if (dist < 6 && enemy.attackTimer <= 0) {
+            health -= 3;
+            enemy.attackTimer = 1.2;
+          }
+        }
+        if (enemy.attackTimer > 0) enemy.attackTimer -= delta;
+      });
+    }
+
+    function updateSandworm(delta, pPos, dY, onRock) {
+      wormTimer += delta;
+
+      if (wormState === 'idle' && wormTimer > 18 && Math.random() < 0.01) {
+        wormState = 'wormsign';
+        wormTimer = 0;
+        const angle = Math.random() * Math.PI * 2;
+        sandworm.position.set(pPos.x + Math.cos(angle) * 120, -50, pPos.z + Math.sin(angle) * 120);
+        document.getElementById('worm-warning').style.display = 'block';
+      }
+
+      if (wormState === 'wormsign') {
+        camera.position.x += (Math.random() - 0.5) * 0.5;
+        camera.position.y += (Math.random() - 0.5) * 0.5;
+        const p = wormSignParticles.geometry.attributes.position.array;
+        for (let i = 0; i < p.length; i += 3) {
+          p[i] = sandworm.position.x + (Math.random() - 0.5) * 80;
+          p[i + 1] = dY + Math.random() * 20;
+          p[i + 2] = sandworm.position.z + (Math.random() - 0.5) * 80;
+        }
+        wormSignParticles.geometry.attributes.position.needsUpdate = true;
+        if (wormTimer > 6) {
+          wormState = 'attack';
+          wormTimer = 0;
+        }
+      }
+
+      if (wormState === 'attack') {
+        sandworm.lookAt(pPos.x, dY, pPos.z);
+        sandworm.position.lerp(new THREE.Vector3(pPos.x, dY + 10, pPos.z), 0.05);
+        if (sandworm.position.distanceTo(pPos) < 20 && !onRock) {
+          health -= 50;
+          if (health <= 0) location.reload();
+        }
+        if (wormTimer > 4) {
+          wormState = 'idle';
+          wormTimer = 0;
+          sandworm.position.y = -200;
+          document.getElementById('worm-warning').style.display = 'none';
+          const p = wormSignParticles.geometry.attributes.position.array;
+          for (let i = 0; i < p.length; i++) p[i] = 0;
+          wormSignParticles.geometry.attributes.position.needsUpdate = true;
+        }
+      }
+    }
+
+    function updateMinimap() {
+      const dotContainer = document.getElementById('player-dots');
+      dotContainer.innerHTML = '';
+      const scale = 0.02;
+      const centerX = 90;
+      const centerY = 90;
+
+      otherPlayers.forEach(data => {
+        const relX = (data.targetPos.x - camera.position.x) * scale;
+        const relZ = (data.targetPos.z - camera.position.z) * scale;
+        const dist = Math.sqrt(relX * relX + relZ * relZ);
+        if (dist < 80) {
+          const dot = document.createElement('div');
+          dot.style.position = 'absolute';
+          dot.style.width = '6px';
+          dot.style.height = '6px';
+          dot.style.background = data.isSandwalking ? '#ffd166' : '#ff3333';
+          dot.style.borderRadius = '50%';
+          dot.style.left = (centerX + relX) + 'px';
+          dot.style.top = (centerY + relZ) + 'px';
+          dot.style.transform = 'translate(-50%, -50%)';
+          dotContainer.appendChild(dot);
+        }
+      });
+    }
+
+    function interactablesRaycast() {
+      clickRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+      return clickRaycaster.intersectObjects([...spiceCrystals, ...structures.map(s => s.mesh)], false);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const time = performance.now();
+      const delta = Math.min((time - prevTime) / 1000, 0.1);
+
+      if (controls.isLocked) {
+        const positions = spiceParticles.geometry.attributes.position.array;
+        for (let i = 0; i < positions.length; i += 3) {
+          positions[i] += 0.05;
+          if (positions[i] > 1000) positions[i] = -1000;
+        }
+        spiceParticles.geometry.attributes.position.needsUpdate = true;
+
+        sparkleSystem.rotation.y += 0.001;
+        sparkleSystem.material.opacity = 0.3 + Math.sin(time * 0.005) * 0.2;
+
+        velocity.x -= velocity.x * 10.0 * delta;
+        velocity.z -= velocity.z * 10.0 * delta;
+        velocity.y -= 9.8 * 100.0 * delta;
+
+        direction.z = Number(moveForward) - Number(moveBackward);
+        direction.x = Number(moveRight) - Number(moveLeft);
+        direction.normalize();
+
+        if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
+        if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
+
+        controls.moveRight(-velocity.x * delta);
+        controls.moveForward(-velocity.z * delta);
+        controls.getObject().position.y += velocity.y * delta;
+
+        const pPos = controls.getObject().position;
+        const ground = terrainHeightAt(pPos.x, pPos.z);
+
+        raycaster.ray.origin.copy(pPos);
+        const intersections = raycaster.intersectObjects(objects, false);
+
+        let targetFloorHeight = ground;
+        let onRock = false;
+
+        if (intersections.length > 0) {
+          const hitY = intersections[0].point.y;
+          if (hitY > targetFloorHeight) {
+            targetFloorHeight = hitY;
+            if (
+              intersections[0].object.geometry.type.includes('Icosahedron') ||
+              intersections[0].object.geometry.type.includes('Sphere')
+            ) {
+              onRock = true;
+            }
+          }
         }
 
-        function init() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xcc8855);
-            scene.fog = new THREE.FogExp2(0xcc8855, 0.004);
-
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1500);
-            camera.position.y = 10;
-
-            const ambientLight = new THREE.HemisphereLight(0xeeeeff, 0x777788, 0.5);
-            ambientLight.position.set(0.5, 1, 0.75);
-            scene.add(ambientLight);
-
-            const dirLight = new THREE.DirectionalLight(0xffaa55, 1);
-            dirLight.position.set(100, 200, 50);
-            scene.add(dirLight);
-
-            controls = new PointerLockControls(camera, document.body);
-
-            const blocker = document.getElementById('blocker');
-            blocker.addEventListener('click', function () {
-                controls.lock();
-            });
-
-            controls.addEventListener('lock', function () {
-                blocker.style.display = 'none';
-            });
-
-            controls.addEventListener('unlock', function () {
-                blocker.style.display = 'flex';
-            });
-
-            scene.add(controls.getObject());
-
-            const onKeyDown = function (event) {
-                switch (event.code) {
-                    case 'KeyW': moveForward = true; break;
-                    case 'KeyA': moveLeft = true; break;
-                    case 'KeyS': moveBackward = true; break;
-                    case 'KeyD': moveRight = true; break;
-                    case 'ShiftLeft': moveShift = true; break;
-                    case 'Space':
-                        if (canJump === true) velocity.y += 350;
-                        canJump = false;
-                        break;
-                }
-            };
-
-            const onKeyUp = function (event) {
-                switch (event.code) {
-                    case 'KeyW': moveForward = false; break;
-                    case 'KeyA': moveLeft = false; break;
-                    case 'KeyS': moveBackward = false; break;
-                    case 'KeyD': moveRight = false; break;
-                    case 'ShiftLeft': moveShift = false; break;
-                }
-            };
-
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
-
-            raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 20);
-
-            geometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
-            geometry.rotateX(-Math.PI / 2);
-
-            const positionAttribute = geometry.attributes.position;
-            for (let i = 0; i < positionAttribute.count; i++) {
-                const x = positionAttribute.getX(i);
-                const z = positionAttribute.getZ(i);
-                
-                let y = Math.sin(x / 50) * Math.cos(z / 50) * 20;
-                y += Math.sin(x / 200) * Math.cos(z / 200) * 50;
-                
-                positionAttribute.setY(i, y);
-            }
-            
-            geometry.computeVertexNormals(); 
-
-            material = new THREE.MeshLambertMaterial({ 
-                color: 0xd4a373, 
-                wireframe: false 
-            });
-
-            terrain = new THREE.Mesh(geometry, material);
-            scene.add(terrain);
-            objects.push(terrain);
-
-            const particleCount = 5000;
-            const particleGeometry = new THREE.BufferGeometry();
-            const particlePositions = new Float32Array(particleCount * 3);
-
-            for (let i = 0; i < particleCount * 3; i += 3) {
-                particlePositions[i] = (Math.random() - 0.5) * 1000;
-                particlePositions[i + 1] = Math.random() * 50;
-                particlePositions[i + 2] = (Math.random() - 0.5) * 1000;
-            }
-
-            particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-            
-            const particleMaterial = new THREE.PointsMaterial({
-                color: 0xff5500,
-                size: 0.5,
-                transparent: true,
-                opacity: 0.8,
-                blending: THREE.AdditiveBlending
-            });
-
-            spiceParticles = new THREE.Points(particleGeometry, particleMaterial);
-            scene.add(spiceParticles);
-
-            const crystalGeo = new THREE.DodecahedronGeometry(0.8, 0);
-            const crystalMat = new THREE.MeshStandardMaterial({ 
-                color: 0xff8800, 
-                emissive: 0xff4400,
-                roughness: 0,
-                metalness: 1
-            });
-            for(let i = 0; i < 40; i++) {
-                const crystal = new THREE.Mesh(crystalGeo, crystalMat);
-                const x = (Math.random() - 0.5) * 1200;
-                const z = (Math.random() - 0.5) * 1200;
-                const y = Math.sin(x / 50) * Math.cos(z / 50) * 20 + Math.sin(x / 200) * Math.cos(z / 200) * 50;
-                crystal.position.set(x, y + 0.2, z); 
-                crystal.rotation.set(Math.random(), Math.random(), Math.random());
-                scene.add(crystal);
-                spiceCrystals.push(crystal);
-            }
-
-            const rockMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.9, flatShading: true });
-            for(let i = 0; i < 15; i++) {
-                const rockGeo = new THREE.DodecahedronGeometry(10, 0);
-                const rock = new THREE.Mesh(rockGeo, rockMat);
-                rock.position.set(0, -9999, 0);
-                scene.add(rock);
-            }
-            const obsidianMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, flatShading: true, roughness: 1 });
-            for(let i = 0; i < 20; i++) {
-                const g = new THREE.IcosahedronGeometry(15, 1);
-                const r = new THREE.Mesh(g, obsidianMat);
-                r.position.set(0, -9999, 0);
-                scene.add(r);
-            }
-            const smoothRockMat = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.9, metalness: 0.1 });
-            for(let i = 0; i < 25; i++) {
-                const smoothGeo = new THREE.SphereGeometry(15, 32, 32); 
-                const rock = new THREE.Mesh(smoothGeo, smoothRockMat);
-                rock.position.set(0, -9999, 0);
-                scene.add(rock);
-            }
-
-            const plateauMat = new THREE.MeshStandardMaterial({ 
-                color: 0x362c24,
-                roughness: 1.0, 
-                metalness: 0.0,
-                flatShading: true
-            });
-
-            for(let i = 0; i < 4; i++) {
-                const rSize = 80 + Math.random() * 50; 
-                const plateauGeo = new THREE.IcosahedronGeometry(rSize, 4); 
-                
-                const pos = plateauGeo.attributes.position;
-                for(let j=0; j<pos.count; j++) {
-                    const vx = pos.getX(j);
-                    const vy = pos.getY(j);
-                    const vz = pos.getZ(j);
-                    const noise = Math.sin(vx*0.15)*Math.cos(vz*0.15)*4 + Math.sin(vy*0.1)*3;
-                    pos.setXYZ(j, vx + noise, vy + noise, vz + noise);
-                }
-                plateauGeo.computeVertexNormals();
-
-                const rock = new THREE.Mesh(plateauGeo, plateauMat);
-                
-                const rx = (Math.random() - 0.5) * 1600;
-                const rz = (Math.random() - 0.5) * 1600;
-                const ry = Math.sin(rx / 50) * Math.cos(rz / 50) * 20 + Math.sin(rx / 200) * Math.cos(rz / 200) * 50;
-                
-                rock.position.set(rx, ry - 10, rz);
-                rock.scale.set(1, 0.35 + Math.random() * 0.1, 1); 
-                rock.rotation.y = Math.random() * Math.PI;
-
-                scene.add(rock);
-                objects.push(rock);
-            }
-
-            createSandworm();
-
-            const sparkleGeo = new THREE.BufferGeometry();
-            const sparkleCount = 8000;
-            const sparklePos = new Float32Array(sparkleCount * 3);
-            for(let i=0; i<sparkleCount*3; i++) sparklePos[i] = (Math.random() - 0.5) * 2000;
-            sparkleGeo.setAttribute('position', new THREE.BufferAttribute(sparklePos, 3));
-            sparkleSystem = new THREE.Points(sparkleGeo, new THREE.PointsMaterial({
-                color: 0xffcc00,
-                size: 0.15,
-                transparent: true,
-                opacity: 0.5,
-                blending: THREE.AdditiveBlending
-            }));
-            scene.add(sparkleSystem);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
-
-            initPresenceMultiplayer();
-            updatePlayerCountHUD();
-
-            window.addEventListener('resize', onWindowResize);
-            document.addEventListener('mousedown', onMouseClick);
+        if (pPos.y < targetFloorHeight + 8) {
+          velocity.y = 0;
+          pPos.y = targetFloorHeight + 8;
+          canJump = true;
         }
 
-        function createSandworm() {
-            sandworm = new THREE.Group();
-            const segmentCount = 20;
-            for(let i = 0; i < segmentCount; i++) {
-                const radius = 15 - (i * 0.5);
-                const segGeo = new THREE.TorusGeometry(radius, 4, 8, 16);
-                const segMat = new THREE.MeshLambertMaterial({ color: 0x3d2b1f });
-                const seg = new THREE.Mesh(segGeo, segMat);
-                seg.rotation.x = Math.PI / 2;
-                seg.position.z = i * 8;
-                sandworm.add(seg);
-            }
-            const mouthGeo = new THREE.CylinderGeometry(15, 15, 5, 12, 1, true);
-            const mouth = new THREE.Mesh(mouthGeo, new THREE.MeshBasicMaterial({color: 0x000000}));
-            mouth.rotation.x = Math.PI / 2;
-            mouth.position.z = -2;
-            sandworm.add(mouth);
+        updateEnemies(delta);
+        updateSandworm(delta, pPos, targetFloorHeight, onRock);
+        updateMultiplayer(delta, time);
+        updateMinimap();
+        syncBuildPreview();
+        updateHUD();
+      }
 
-            sandworm.position.y = -100;
-            scene.add(sandworm);
+      renderer.render(scene, camera);
+      prevTime = time;
+    }
 
-            const signGeo = new THREE.BufferGeometry();
-            const signPos = new Float32Array(300 * 3);
-            signGeo.setAttribute('position', new THREE.BufferAttribute(signPos, 3));
-            wormSignParticles = new THREE.Points(signGeo, new THREE.PointsMaterial({color: 0xd4a373, size: 4, transparent: true, opacity: 0.5}));
-            scene.add(wormSignParticles);
+    function syncBuildPreview() {
+      if (!buildPreview || !controls.isLocked) return;
+      const point = getCrosshairGroundPoint();
+      if (!point) return;
+      const x = Math.round(point.x / 12) * 12;
+      const z = Math.round(point.z / 12) * 12;
+      const y = terrainHeightAt(x, z);
+      buildPreview.position.set(x, y, z);
+      buildPreview.rotation.y = 0;
+    }
+
+    function isInteractingNearBench() {
+      return craftingBenches.some(b => b.position.distanceTo(camera.position) < 10);
+    }
+
+    function tryCraftFromBench() {
+      if (!isInteractingNearBench()) return false;
+      if (!hasStillsuit && wood >= 2 && fabric >= 2 && electronics >= 1) {
+        wood -= 2;
+        fabric -= 2;
+        electronics -= 1;
+        hasStillsuit = true;
+        water = Math.min(100, water + 20);
+        saveGame();
+        updateHUD();
+        return true;
+      }
+      return false;
+    }
+
+    function interact() {
+      if (tryCraftFromBench()) return;
+      if (buildMode) {
+        tryBuildAtCrosshair();
+        return;
+      }
+      const hits = interactablesRaycast();
+      if (hits.length > 0) {
+        const obj = hits[0].object;
+        if (spiceCrystals.includes(obj) && obj.visible) {
+          obj.visible = false;
+          spiceScore += 50;
+          updateHUD();
+          saveGame();
         }
+      }
+    }
 
-        function onMouseClick(event) {
-            if (!controls.isLocked) return;
-            clickRaycaster.setFromCamera(new THREE.Vector2(0,0), camera);
-            const intersects = clickRaycaster.intersectObjects(spiceCrystals);
-            if (intersects.length > 0) {
-                const target = intersects[0].object;
-                if (target.visible) {
-                    target.visible = false;
-                    spiceScore += 50;
-                    document.getElementById('spice-score').innerText = spiceScore;
-                }
-            }
-        }
+    function buildStructureAtCrosshair() {
+      const point = getCrosshairGroundPoint();
+      if (!point || !buildMode) return;
+      const x = Math.round(point.x / 12) * 12;
+      const z = Math.round(point.z / 12) * 12;
+      const y = terrainHeightAt(x, z);
+      placeStructure(buildMode, x, y, z);
+      updateHUD();
+    }
 
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
+    function tryBuildAtCrosshair() {
+      buildStructureAtCrosshair();
+    }
 
-        function updateMultiplayer(delta, time) {
-            otherPlayers.forEach((data) => {
-                data.mesh.position.lerp(new THREE.Vector3(data.targetPos.x, data.targetPos.y - 18, data.targetPos.z), 0.1);
-                data.mesh.rotation.y = THREE.MathUtils.lerp(data.mesh.rotation.y, data.targetRot, 0.1);
-
-                if (data.isSandwalking) {
-                    data.mesh.rotation.z = Math.sin(time * 0.005) * 0.1;
-                } else {
-                    data.mesh.rotation.z = 0;
-                }
-            });
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            const time = performance.now();
-            const delta = Math.min((time - prevTime) / 1000, 0.1);
-    
-            renderer.render(scene, camera);
-    
-            if (typeof otherPlayers !== 'undefined') {
-                updateMultiplayer(delta, time);
-            }
-
-            if (controls.isLocked === true) {
-                const positions = spiceParticles.geometry.attributes.position.array;
-                for(let i = 0; i < positions.length; i+=3) {
-                    positions[i] += 0.05; 
-                    if(positions[i] > 500) positions[i] = -500; 
-                }
-                spiceParticles.geometry.attributes.position.needsUpdate = true;
-        
-                sparkleSystem.rotation.y += 0.001;
-                sparkleSystem.material.opacity = 0.3 + Math.sin(time * 0.005) * 0.2;
-
-                velocity.x -= velocity.x * 10.0 * delta;
-                velocity.z -= velocity.z * 10.0 * delta;
-                velocity.y -= 9.8 * 100.0 * delta; 
-
-                direction.z = Number(moveForward) - Number(moveBackward);
-                direction.x = Number(moveRight) - Number(moveLeft);
-                direction.normalize(); 
-        
-                if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
-                if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
-
-                controls.moveRight(-velocity.x * delta);
-                controls.moveForward(-velocity.z * delta);
-                controls.getObject().position.y += (velocity.y * delta);
-
-                const pPos = controls.getObject().position;
-                const dY = Math.sin(pPos.x/50)*Math.cos(pPos.z/50)*20 + Math.sin(pPos.x/200)*Math.cos(pPos.z/200)*50;
-        
-                let targetFloorHeight = dY;
-                let onRock = false;
-
-                raycaster.ray.origin.copy(pPos);
-                const intersections = raycaster.intersectObjects(objects, false);
-        
-                if (intersections.length > 0) {
-                    const hitPoint = intersections[0].point.y;
-                    if (hitPoint > targetFloorHeight) {
-                        targetFloorHeight = hitPoint;
-                        if (intersections[0].object.geometry.type.includes("Icosahedron") || 
-                            intersections[0].object.geometry.type.includes("Sphere")) {
-                            onRock = true;
-                        }
-                    }
-                }
-
-                if (pPos.y < targetFloorHeight + 8) {
-                    velocity.y = 0;
-                    pPos.y = targetFloorHeight + 8;
-                    canJump = true;
-                }
-
-                updateSandworm(delta, pPos, targetFloorHeight, onRock);
-        
-                updateMinimap();
-            }
-
-            prevTime = time;
-        }
-
-        function updateSandworm(delta, pPos, dY, onRock) {
-            wormTimer += delta;
-
-            if (wormState === "idle" && wormTimer > 20 && Math.random() < 0.01) {
-                wormState = "wormsign";
-                wormTimer = 0;
-                const angle = Math.random() * Math.PI * 2;
-                sandworm.position.set(pPos.x + Math.cos(angle)*100, -50, pPos.z + Math.sin(angle)*100);
-                document.getElementById('worm-warning').style.display = 'block';
-            }
-
-            if (wormState === "wormsign") {
-                camera.position.x += (Math.random()-0.5) * 0.5;
-                camera.position.y += (Math.random()-0.5) * 0.5;
-                
-                const p = wormSignParticles.geometry.attributes.position.array;
-                for(let i=0; i<p.length; i+=3) {
-                    p[i] = sandworm.position.x + (Math.random()-0.5)*80;
-                    p[i+1] = dY + Math.random()*20;
-                    p[i+2] = sandworm.position.z + (Math.random()-0.5)*80;
-                }
-                wormSignParticles.geometry.attributes.position.needsUpdate = true;
-
-                if (wormTimer > 6) {
-                    wormState = "attack";
-                    wormTimer = 0;
-                }
-            }
-
-            if (wormState === "attack") {
-                sandworm.lookAt(pPos.x, dY, pPos.z);
-                sandworm.position.lerp(new THREE.Vector3(pPos.x, dY + 10, pPos.z), 0.05);
-                
-                if (sandworm.position.distanceTo(pPos) < 20) {
-                    if (!onRock) {
-                        alert("The Desert has claimed you. Shai-Hulud has fed.");
-                        location.reload();
-                    }
-                }
-
-                if (wormTimer > 4) {
-                    wormState = "idle";
-                    wormTimer = 0;
-                    sandworm.position.y = -200;
-                    document.getElementById('worm-warning').style.display = 'none';
-                    const p = wormSignParticles.geometry.attributes.position.array;
-                    for(let i=0; i<p.length; i++) p[i] = 0;
-                    wormSignParticles.geometry.attributes.position.needsUpdate = true;
-                }
-            }
-        }
-    </script>
+    function spendMelange(amount) {
+      if (spiceScore < amount) return false;
+      spiceScore -= amount;
+      updateHUD();
+      return true;
+    }
+  </script>
 </body>
 </html>
