@@ -3,18 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dune: Arrakis First‑Person Survival</title>
+  <title>Dune: Arrakis Multiplayer</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --sand: #d4a373;
-      --ui-bg: rgba(0,0,0,0.55);
-      --ui-border: #d35400;
+      --sand-rim: #d9b480;
+      --ui-bg: rgba(10,10,10,0.82);
+      --ui-border: #c27f1d;
       --spice: #ff9d00;
+      --spice-rim: #f4a800;
       --danger: #ff3300;
       --white: #ffffff;
-      --green: #6bff8a;
-      --dropdown-bg: rgba(10,10,10,0.92);
+      --hud-text: #f1d6a3;
+      --dropdown-bg: rgba(13,10,8,0.94);
+      --water: #00ccff;
+      --health: #ff4444;
+      --builder: #ffa000;
+      --shield: #6bff8a;
     }
 
     body {
@@ -23,7 +29,7 @@
       background: #000;
       font-family: "Courier New", Courier, monospace;
       user-select: none;
-      color: #ffd39c;
+      color: var(--hud-text);
       cursor: none;
     }
 
@@ -34,7 +40,6 @@
       inset: 0;
       pointer-events: none;
       z-index: 10;
-      color: #f39c12;
     }
 
     #crosshair {
@@ -43,57 +48,61 @@
       left: 50%;
       width: 10px;
       height: 10px;
-      border: 2px solid rgba(255,255,255,0.65);
+      border: 2px solid rgba(255,255,255,0.75);
       border-radius: 50%;
-      transform: translate(-50%, -50%);
       box-sizing: border-box;
       z-index: 15;
     }
 
-    #hud, #spice-ui, #minimap, #chat-ui {
+    #hud,
+    #spice-ui,
+    #minimap,
+    #chat-ui,
+    #hud-bottom {
       position: absolute;
       background: var(--ui-bg);
       border: 1px solid var(--ui-border);
-      color: #ffe6c8;
-      pointer-events: none;
-      z-index: 20;
+      color: var(--hud-text);
     }
 
     #hud {
-      top: 20px;
-      left: 20px;
-      min-width: 240px;
-      padding: 10px;
+      top: 12px;
+      left: 12px;
+      min-width: 260px;
+      padding: 9px 10px;
       border-left-width: 3px;
-      font-size: 14px;
+      font-size: 13px;
       line-height: 1.45;
       pointer-events: auto;
     }
 
     #spice-ui {
-      top: 20px;
-      right: 20px;
-      padding: 10px 18px;
+      top: 12px;
+      right: 12px;
+      padding: 8px 14px;
       color: var(--spice);
-      text-shadow: 0 0 10px #ff5500;
-      font-size: 20px;
+      text-shadow: 0 0 12px rgba(255,150,0,0.8);
+      font-size: 19px;
     }
 
     #minimap {
-      bottom: 20px;
-      left: 20px;
+      bottom: 12px;
+      left: 12px;
       width: 140px;
       height: 140px;
       border-radius: 50%;
-      padding: 8px;
+      padding: 6px;
     }
 
-    #player-dots, #minimap-center {
+    #player-dots,
+    #minimap-center {
       position: absolute;
-      inset: 0;
     }
 
-    #player-dots { pointer-events: none; }
+    #player-dots {
+      inset: 0;
+      pointer-events: none;
+    }
 
     #minimap-center {
       top: 50%;
@@ -106,27 +115,29 @@
     }
 
     #chat-ui {
-      right: 20px;
-      bottom: 20px;
+      right: 12px;
+      bottom: 12px;
       width: 360px;
       padding: 10px;
-      font-size: 14px;
+      font-size: 12px;
     }
 
     #chat-log {
-      height: 140px;
+      height: 125px;
       overflow-y: auto;
-      background: rgba(0,0,0,0.4);
+      background: rgba(5,5,5,0.65);
       padding: 6px;
-      margin-bottom: 6px;
-      border: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 5px;
+      border: 1px solid rgba(255,255,255,0.12);
       white-space: pre-wrap;
+      color: #dfe6f9;
+      font-size: 12px;
     }
 
     #chat-input {
       width: calc(100% - 70px);
       box-sizing: border-box;
-      padding: 6px;
+      padding: 5px 6px;
       background: rgba(0,0,0,0.5);
       color: white;
       border: 1px solid #7b4d25;
@@ -145,48 +156,64 @@
       background: #2b1b12;
       color: #ffe6c8;
       border: 1px solid #8d5a2b;
-      padding: 5px 7px;
+      padding: 4px 7px;
       cursor: pointer;
-      font-size: 12px;
+      font-size: 11px;
+    }
+
+    button:hover {
+      background: #4a2e1d;
+      border-color: #d6985e;
     }
 
     button.active {
-      background: #7a4a1a;
-      color: white;
-      border-color: #ffbd59;
-      box-shadow: 0 0 6px #ff9d00;
+      background: #8f5d1a;
+      color: #fff8e1;
+      border-width: 1px 2px 2px 1px;
+      outline: 1px solid #ffbd59;
+      box-shadow: 0 0 8px rgba(255,189,89,0.65);
     }
 
-    /* dropdown containers */
     .dropdown {
       position: absolute;
-      bottom: calc(100% + 220px);
+      bottom: calc(100% + 10px);
       left: 0;
       width: 280px;
       background: var(--dropdown-bg);
-      border: 1px solid #8d5a2b;
-      border-radius: 4px;
-      padding: 10px;
-      font-size: 12px;
-      line-height: 1.35;
+      border: 1px solid #654224;
+      border-radius: 5px;
+      padding: 9px;
+      font-size: 11.5px;
+      line-height: 1.45;
       display: none;
+      pointer-events: auto;
       z-index: 90;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.55);
+    }
+
+    .dropdown h4 {
+      margin: 0 0 6px 0;
+      color: #fbbf7e;
+      font-size: 12px;
+      font-weight: bold;
     }
 
     .dropdown-toggle {
       position: absolute;
       top: 10px;
-      left: 10px;
-      padding: 4px 8px;
-      font-size: 12px;
-      background: #2b1b12;
-      border: 1px solid #8d5a2b;
+      padding: 3px 6px;
+      font-size: 10.5px;
+      background: #22150c;
+      color: #faced4;
+      border: 1px solid #654224;
+      border-radius: 3px;
       cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.4);
     }
 
-    #dropdown-build, #dropdown-guild, #dropdown-leaderboard {
-      pointer-events: auto;
-    }
+    #btn-toggle-build { left: 10px; }
+    #btn-toggle-guild { left: 105px; }
+    #btn-toggle-leaderboard { left: 195px; }
 
     #dropdown-build.active,
     #dropdown-guild.active,
@@ -194,70 +221,121 @@
       display: block;
     }
 
-    #resource-ui {
-      margin-top: 8px;
-      padding-top: 8px;
+    #resource-ui,
+    #weapon-ui,
+    #build-status-line {
+      margin-top: 7px;
+      padding-top: 6px;
       border-top: 1px dashed #7b4d25;
+      font-size: 11.5px;
+      line-height: 1.25;
     }
 
-    #worm-warning, #combat-warning, #save-indicator {
+    #hud-bottom {
+      top: calc(100% - 60px);
+      inset: auto auto auto 12px;
+      width: 300px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      font-size: 11px;
+      border: none;
+      background: rgba(8,5,4,0.85);
+      pointer-events: auto;
+    }
+
+    #action-ui,
+    #status-ui {
+      color: #f0e0be;
+      font-weight: bold;
+    }
+
+    #resource-ui span {
+      color: #ffc97e;
+    }
+
+    #weapon-ui span {
+      color: #aaf3ff;
+    }
+
+    #watersuit-tag {
+      color: #7bf3c1;
+      font-size: 11px;
+      font-weight: normal;
+    }
+
+    #warning-texts {
       position: absolute;
       left: 50%;
       transform: translateX(-50%);
-      font-weight: bold;
-      text-shadow: 0 0 15px #000;
-      display: none;
-      z-index: 30;
+      text-align: center;
+      white-space: pre;
+      font-size: 11px;
+      pointer-events: none;
+      z-index: 25;
     }
 
     #worm-warning {
-      top: 16%;
-      font-size: 30px;
+      top: 14%;
+      font-size: 28px;
       color: var(--danger);
-      animation: blinker 0.5s linear infinite;
+      filter: drop-shadow(0 0 14px rgba(255,51,0,0.65));
+      animation: lightBlink 0.55s linear infinite;
     }
 
     #combat-warning {
-      top: 20%;
-      font-size: 22px;
+      top: 18.5%;
+      font-size: 20px;
       color: #ffffff;
+      filter: drop-shadow(0 0 10px rgba(255,255,255,0.6));
     }
 
     #save-indicator {
-      top: 24%;
-      font-size: 16px;
-      color: var(--green);
+      top: 23%;
+      font-size: 13px;
+      color: var(--shield);
+      text-shadow: 0 0 10px rgba(107,243,138,0.75);
+    }
+
+    @keyframes lightBlink {
+      0%, 60% { opacity: 1; }
+      61%, 100% { opacity: 0.35; }
     }
 
     #blocker {
       position: absolute;
       inset: 0;
-      background: rgba(0,0,0,0.72);
+      background: radial-gradient(ellipse at center, rgba(10,5,2,0.88) 0%, rgba(0,0,0,0.95) 80%);
       display: flex;
       justify-content: center;
       align-items: center;
-      color: white;
+      flex-direction: column;
+      color: #ffe6c8;
       pointer-events: auto;
       cursor: pointer;
       z-index: 40;
       text-align: center;
+      gap: 8px;
+      font-size: 13px;
     }
 
     .title {
-      font-size: 42px;
+      font-size: 40px;
       font-weight: bold;
       color: #d35400;
-      margin-bottom: 16px;
-      letter-spacing: 5px;
+      margin-bottom: 8px;
+      letter-spacing: 4px;
       text-transform: uppercase;
     }
 
     .instructions {
-      font-size: 18px;
       line-height: 1.55;
+      text-align: left;
+      white-space: pre;
+      font-size: 12px;
+      color: #d8bea2;
     }
-
-    @keyframes blinker { 50% { opacity: 0; } }
   </style>
 </head>
 <body>
@@ -265,33 +343,42 @@
   <div id="ui-layer">
     <div id="crosshair"></div>
     <div id="hud"></div>
-    <div id="spice-ui"></div>
-    <div id="worm-warning">WORMSIGN DETECTED – FIND ROCKS!</div>
-    <div id="combat-warning">COMBAT READY</div>
-    <div id="save-indicator">SAVED</div>
+    <div id="spice-ui">MELANGE: <span id="spice-score">0</span></div>
+    <div id="hud-bottom"></div>
+    <div id="minimap">
+      <div id="minimap-center"></div>
+      <div id="player-dots"></div>
+    </div>
+    <div id="warning-texts">
+      <div id="worm-warning"></div>
+      <div id="combat-warning"></div>
+      <div id="save-indicator"></div>
+    </div>
   </div>
 
   <div id="blocker">
     <div>
-      <div class="title">Arrakis Exploration</div>
+      <div class="title">Arrakis</div>
       <div class="instructions">
-        <strong>Click to Enter the Desert</strong><br><br>
-        W, A, S, D = Move<br>
-        SPACE = Jump<br>
-        SHIFT = Fremen Walk / Sandwalk<br>
-        MOUSE = Look around<br>
-        E = Interact / Build / Attack<br>
-        Q = Toggle All White Sword / Hands<br>
-        1 = Foundation, 2 = Wall, 3 = Roof, 4 = Bench<br>
-        ESC = Clear Build Mode
+First‑person survival on the desert planet<br><br>
+W, A, S, D  = Move<br>
+SHAFT      = Sprint / Sandwalk<br>
+SPACE      = Jump<br>
+MOUSE      = Look around<br>
+E          = Interact / Build / Attack<br>
+Q          = Toggle All White Sword / Hands<br>
+1–4        = Foundation | Wall | Roof | Bench<br>
+T          = Open/Close Chat<br>
+ESC        = Clear build mode<br>
+DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
       </div>
     </div>
   </div>
 
   <div id="dropdown-build" class="dropdown">
-    <div><strong>Build</strong></div>
-    <div><span id="build-mode-label">None</span></div>
-    <div><span id="build-status">Select a piece</span></div>
+    <h4>🏗️ BUILDING</h4>
+    <div>Mode: <span id="build-mode-label">None</span></div>
+    <div id="build-status">Select a piece</div>
     <div>
       <button id="mode-foundation">Foundation</button>
       <button id="mode-wall">Wall</button>
@@ -300,7 +387,7 @@
       <button id="mode-cancel">Cancel</button>
     </div>
     <div id="weapon-ui">
-      <strong>Weapon</strong><br>
+      <div><strong>Weapon</strong></div>
       <button id="weapon-none">Hands</button>
       <button id="weapon-sword">All White Sword</button>
     </div>
@@ -311,43 +398,40 @@
       <div>Stone: <span id="stone-score">0</span></div>
       <div>Fabric: <span id="fabric-score">0</span></div>
       <div>Electronics: <span id="electronics-score">0</span></div>
-      <div>Stillsuit: <span id="stillsuit-score">No</span></div>
+      <div id="watersuit-tag">Stillsuit: No</span></div>
     </div>
   </div>
 
   <div id="dropdown-guild" class="dropdown">
-    <div><strong>Guild Exchange</strong></div>
+    <h4>💰 GUILD EXCHANGE</h4>
     <button id="buy-water">Buy Water (10 Melange)</button>
     <button id="buy-wood">Buy Wood (8 Melange)</button>
     <button id="buy-stone">Buy Stone (10 Melange)</button>
     <button id="buy-fabric">Buy Fabric (12 Melange)</button>
     <button id="buy-electronics">Buy Electronics (18 Melange)</button>
     <button id="buy-heal">Buy Medical Gel (15 Melange)</button>
-    <div style="margin-top:6px;font-size:11px;">Construction materials and water are purchased with melange.</div>
+    <div style="margin-top:6px;font-size:10.5px;line-height:1.4;">
+      Trade melange for water, construction materials, or healing.
+    </div>
   </div>
 
   <div id="dropdown-leaderboard" class="dropdown">
-    <div><strong>Melange Leaderboard</strong></div>
+    <h4>🏆 MELANGE LEADERBOARD</h4>
     <div id="leaderboard-list"></div>
   </div>
 
-  <div id="minimap">
-    <div id="minimap-center"></div>
-    <div id="player-dots"></div>
-  </div>
-
   <div id="chat-ui">
-    <div><strong>Live Chat</strong></div>
+    <div><strong>💬 Live Chat</strong></div>
     <div id="chat-log"></div>
     <div style="display:flex; gap:4px;">
-      <input id="chat-input" type="text" maxlength="120" placeholder="Type message..." />
+      <input id="chat-input" type="text" maxlength="140" placeholder="Type a message..." />
       <button id="chat-send">Send</button>
     </div>
   </div>
 
-  <div class="dropdown-toggle" style="left: 10px; top: 10px;" id="btn-toggle-build">🛠️ Build</div>
-  <div class="dropdown-toggle" style="left: 90px; top: 10px;" id="btn-toggle-guild">💰 Guild</div>
-  <div class="dropdown-toggle" style="left: 170px; top: 10px;" id="btn-toggle-leaderboard">🏆 Leader</div>
+  <div class="dropdown-toggle" id="btn-toggle-build">🛠️ Build</div>
+  <div class="dropdown-toggle" id="btn-toggle-guild">💰 Guild</div>
+  <div class="dropdown-toggle" id="btn-toggle-leaderboard">🏆 Leader</div>
 
   <script type="importmap">
     {
@@ -356,7 +440,7 @@
         "three/addons/": "https://unpkg.com/three@0.158.0/examples/jsm/"
       }
     }
-  </script>
+      </script>
 
   <script type="module">
     import * as THREE from 'three';
@@ -365,27 +449,41 @@
     const { createClient } = supabase;
 
     const supabaseClient = createClient(
-      'https://clbjiyokjmovijgwybyu.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsYmppeW9ram1vdmlqZ3d5Ynl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNTQyMzEsImV4cCI6MjA5MDgzMDIzMX0.EY8uZZN8hEyncJoi-rswxnKeaeIBTuF_xkwBu-yvF7c'
+      'https://clbjiyokjmovijgwybyu.supabase.co',  // your project URL
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsYmppeW9ram1vdmlqZ3d5Ynl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNTQyMzEsImV4cCI6MjA5MDgzMDIzMX0.EY8uZZN8hEyncJoi-rswxnKeaeIBTuF_xkwBu-yvF7c'  // anon key
     );
 
-    const SAVE_KEY = 'arrakis_save_v2';
-    const ROOM = 'arrakis_room';
+    const SAVE_KEY = 'arrakis_save_v3';
+    const ROOM = 'arrakis_room_global';
     const myId = Math.random().toString(36).substring(2, 10);
     const playerName = 'Fremen-' + myId.slice(0, 4);
+    const WORLD_SEED = 42;
+
+    // Seed our deterministic world so everyone sees the same Arrakis.
+    Math.seedrandom = function(seed) {
+      let m = 0x80000000;
+      let a = 1103515245;
+      let c = 12345;
+      let z = seed || Math.random();
+      return function() {
+        z = (a * z + c) % m;
+        return z / m;
+      };
+    };
+    const random = Math.seedrandom(WORLD_SEED);
 
     let scene, camera, renderer, controls;
     let raycaster, clickRaycaster;
     let terrain, terrainGeo;
 
-    const objects = [];
-    const structures = [];
-    const placedFoundations = new Map();
+    const objects = [];              // everything you collide with (terrain + rocks)
+    const structures = [];           // foundations, walls, roofs, benches
+    const placedFoundations = new Map();  // grid key → true
     const placedWalls = new Map();
     const placedRoofs = new Map();
     const craftingBenches = [];
 
-    const otherPlayers = new Map();
+    const otherPlayers = new Map();  // id → { mesh, targetPos, targetRot, isSandwalking, health, melange, name }
     let presenceChannel = null;
     let chatChannel = null;
 
@@ -402,26 +500,43 @@
     let stone = 0;
     let fabric = 0;
     let electronics = 0;
-    let hasStillsuit = false;
-    let equippedWeapon = 'hands'; // 'hands' or 'sword'
+    let hasStillsuit = false;  // slows water loss
+    let equippedWeapon = 'hands';  // 'hands' or 'sword'
     let buildMode = null;
     let buildPreview = null;
     let swordMesh = null;
 
-    let wormState = 'idle';
+    let dayNightPhase = 0;   // 0..1: 0 = day, 0.25–0.75 = night, 1 = day again
+    let dayNightT = 0;
+    const DAY_DURATION_SEC = 600;  // 10 minutes
+
+    let wormState = 'idle';  // 'idle', 'wormsign', 'attack'
     let wormTimer = 0;
     let sandworm = null;
     let wormSignParticles = null;
+
     let spiceParticles = null;
     let sparkleSystem = null;
 
     const spiceCrystals = [];
+    const spiceBeaconsLight = [];    // floating “spice bloom” spotlights (for UI only)
     const enemies = [];
+
     const chatMessages = [];
 
     const world = {
       terrainSize: 8000,
-      terrainSegments: 220
+      terrainSegments: 220,
+      dayNight: {
+        daySky: new THREE.Color(0xffe6d3).lerp(new THREE.Color(0xe6cc99), 0.3),
+        dayFog: new THREE.Color(0xe6cc99),
+        dayAmb: new THREE.Color(0xf7e9d0),
+        dayDir: new THREE.Color(0xffc068),
+        nightSky: new THREE.Color(0x0b0b22),
+        nightFog: new THREE.Color(0x0b0b22),
+        nightAmb: new THREE.Color(0x222244),
+        nightDir: new THREE.Color(0x404080)
+      }
     };
 
     const buildingCosts = {
@@ -436,31 +551,19 @@
       damage: 25
     };
 
-    // DAY‑NIGHT (10 min cycle)
-    const DAY_DURATION_SEC = 600; // 10 minutes
-    let dayPhase = 0; // 0..1
-
-    // SEED for deterministic world (everyone gets same maps)
-    const worldSeed = 42;
-    Math.seedrandom = function(seed) {
-      let m = 0x80000000;
-      let a = 1103515245;
-      let c = 12345;
-      let z = seed || Math.random();
-      return function() {
-        z = (a * z + c) % m;
-        return z / m;
-      };
-    };
-    const random = Math.seedrandom(worldSeed);
-
-    init();
-    animate();
-
-        function saveGame() {
+    // LOAD / SAVE
+    function saveGame() {
       try {
         const data = {
-          spiceScore, water, health, wood, stone, fabric, electronics, hasStillsuit, equippedWeapon,
+          spiceScore,
+          water,
+          health,
+          wood,
+          stone,
+          fabric,
+          electronics,
+          hasStillsuit,
+          equippedWeapon,
           player: {
             x: camera.position.x,
             y: camera.position.y,
@@ -471,6 +574,17 @@
         localStorage.setItem(SAVE_KEY, JSON.stringify(data));
         flashSave();
       } catch {}
+    }
+
+    function flashSave() {
+      const el = document.getElementById('save-indicator');
+      if (!el) return;
+      el.textContent = 'SAVED';
+      el.style.display = 'block';
+      clearTimeout(flashSave._t);
+      flashSave._t = setTimeout(() => {
+        el.style.display = 'none';
+      }, 600);
     }
 
     function loadGame() {
@@ -488,103 +602,257 @@
         hasStillsuit = !!data.hasStillsuit;
         equippedWeapon = data.equippedWeapon ?? 'hands';
         if (data.player) {
-          camera.position.set(data.player.x ?? 0, data.player.y ?? 10, data.player.z ?? 0);
+          camera.position.set(
+            data.player.x ?? 0,
+            data.player.y ?? 10,
+            data.player.z ?? 0
+          );
           camera.rotation.y = data.player.rotY ?? 0;
         }
       } catch {}
     }
 
-    function flashSave() {
-      const el = document.getElementById('save-indicator');
-      el.style.display = 'block';
-      clearTimeout(flashSave._t);
-      flashSave._t = setTimeout(() => el.style.display = 'none', 700);
-    }
-
+    // WORLD GEOMETRY
     function terrainHeightAt(x, z) {
       return Math.sin(x / 120) * Math.cos(z / 120) * 35 +
              Math.sin(x / 500) * Math.cos(z / 500) * 90 +
              Math.sin((x + z) / 250) * 20;
     }
 
-    function updateHUD() {
-      document.getElementById('hud').innerHTML =
-        `Location: Deep Desert<br>` +
-        `Suit Status: ${health > 0 ? 'Optimal' : 'Critical'}<br>` +
-        `Water: ${Math.floor(water)}<br>` +
-        `Health: ${Math.floor(health)}<br>` +
-        `Online Players: ${1 + otherPlayers.size}<br>` +
-        `Weapon: ${equippedWeapon === 'sword' ? 'All White Sword' : 'Hands'}<br>` +
-        `Build: ${buildMode ? buildMode : 'None'}`;
+    function buildTerrain() {
+      terrainGeo = new THREE.PlaneGeometry(
+        world.terrainSize,
+        world.terrainSize,
+        world.terrainSegments,
+        world.terrainSegments
+      );
+      terrainGeo.rotateX(-Math.PI / 2);
 
-      document.getElementById('spice-ui').innerHTML =
-        `MELANGE: <span id="spice-score">${Math.floor(spiceScore)}</span>`;
+      const pos = terrainGeo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const z = pos.getZ(i);
+        let y = 0;
+        y += Math.sin(x / 120) * Math.cos(z / 120) * 35;
+        y += Math.sin(x / 500) * Math.cos(z / 500) * 90;
+        y += Math.sin((x + z) / 250) * 20;
+        pos.setY(i, y);
+      }
+      terrainGeo.computeVertexNormals();
 
-      document.getElementById('water-score').innerText = Math.floor(water);
-      document.getElementById('health-score').innerText = Math.floor(health);
-      document.getElementById('wood-score').innerText = wood;
-      document.getElementById('stone-score').innerText = stone;
-      document.getElementById('fabric-score').innerText = fabric;
-      document.getElementById('electronics-score').innerText = electronics;
-      document.getElementById('stillsuit-score').innerText = hasStillsuit ? 'Yes' : 'No';
-      document.getElementById('build-mode-label').innerText = buildMode ?? 'None';
-      document.getElementById('build-status').innerText = buildMode ? `Placing ${buildMode}` : 'Select a piece';
+      terrain = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({
+        color: 0xd4a373,
+        flatShading: true
+      }));
+      scene.add(terrain);
+      objects.push(terrain);
     }
 
-    function updateLeaderboard() {
-      const list = document.getElementById('leaderboard-list');
-      const board = [
-        { name: playerName, score: spiceScore, me: true },
-        ...Array.from(otherPlayers.values()).map(p => ({ name: p.name || 'Player', score: p.melange || 0, me: false }))
-      ].sort((a, b) => b.score - a.score).slice(0, 10);
+    function buildSpice() {
+      const geo = new THREE.BufferGeometry();
+      const n = 20000;
+      const arr = new Float32Array(n * 3);
 
-      list.innerHTML = board.map((p, i) => `${i + 1}. ${p.name}${p.me ? ' (you)' : ''} – ${Math.floor(p.score)}`).join('<br>');
+      for (let i = 0; i < n * 3; i += 3) {
+        const x = (random() - 0.5) * 4000;
+        const z = (random() - 0.5) * 4000;
+        const h = terrainHeightAt(x, z) + 0.2;
+        arr[i]     = x;
+        arr[i + 1] = h + random() * 70;
+        arr[i + 2] = z;
+      }
+
+      geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+
+      spiceParticles = new THREE.Points(geo, new THREE.PointsMaterial({
+        color: 0xff5500,
+        size: 0.7,
+        transparent: true,
+        opacity: 0.75,
+        blending: THREE.AdditiveBlending
+      }));
+      scene.add(spiceParticles);
+
+      // extra dense sparkle layer in the air
+      const sparkGeo = new THREE.BufferGeometry();
+      const sparkArr = new Float32Array(n * 3);
+      for (let i = 0; i < n * 3; i += 3) {
+        sparkArr[i]     = (random() - 0.5) * 4000;
+        sparkArr[i + 1] = (random() - 0.5) * 300 + 100;
+        sparkArr[i + 2] = (random() - 0.5) * 4000;
+      }
+      sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkArr, 3));
+
+      sparkleSystem = new THREE.Points(
+        sparkGeo,
+        new THREE.PointsMaterial({
+          color: 0xffcc88,
+          size: 0.23,
+          transparent: true,
+          opacity: 0.5,
+          blending: THREE.AdditiveBlending
+        })
+      );
+      scene.add(sparkleSystem);
     }
 
-    function addChatLine(text) {
-      const log = document.getElementById('chat-log');
-      const line = document.createElement('div');
-      line.textContent = text;
-      log.appendChild(line);
-      log.scrollTop = log.scrollHeight;
+    function buildSpiceBeacon(x, z, durationSec = 30) {
+      const beaconPos = new THREE.Vector3(
+        x,
+        terrainHeightAt(x, z) + 3,
+        z
+      );
+
+      const cone = new THREE.Mesh(
+        new THREE.ConeGeometry(6, 20, 16),
+        new THREE.MeshStandardMaterial({ color: 0xff9d00, emissive: 0xff5500, emissiveIntensity: 0.4 })
+      );
+      cone.position.copy(beaconPos);
+      cone.rotation.x = Math.PI / 2;
+      scene.add(cone);
+
+      const light = new THREE.SpotLight(0xffaa60, 2.2, 60, Math.PI / 3.5, 0.7);
+      light.position.copy(beaconPos);
+      light.position.y += 1.5;
+      light.target.position.copy(beaconPos);
+      light.target.position.y -= 20;
+      light.add(light.target);
+      scene.add(light);
+
+      const timeout = setTimeout(() => {
+        scene.remove(cone);
+        scene.remove(light);
+      }, durationSec * 1000);
+
+      spiceBeaconsLight.push({ light, cone, timeout });
     }
 
-    function initChatUI() {
-      document.getElementById('chat-send').onclick = sendChat;
-      document.getElementById('chat-input').addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          sendChat();
-        }
+    function buildRocksAndPlateaus() {
+      const plateauMat = new THREE.MeshStandardMaterial({
+        color: 0x362c24,
+        roughness: 0.95,
+        flatShading: true
       });
-    }
 
-    async function sendChat() {
-      const input = document.getElementById('chat-input');
-      const text = input.value.trim();
-      if (!text || !chatChannel) return;
-      input.value = '';
-      await chatChannel.send({
-        type: 'broadcast',
-        event: 'chat',
-        payload: {
-          id: myId,
-          name: playerName,
-          text,
-          ts: Date.now()
+      for (let i = 0; i < 24; i++) {
+        const baseSize = 120 + random() * 100;
+        const geo = new THREE.IcosahedronGeometry(baseSize, 3);
+
+        const pos = geo.attributes.position;
+        for (let j = 0; j < pos.count; j++) {
+          const vx = pos.getX(j);
+          const vy = pos.getY(j);
+          const vz = pos.getZ(j);
+          const noise =
+            Math.sin(vx * 0.08) * Math.cos(vz * 0.08) * 7.5 +
+            Math.sin(vy * 0.06) * 4.5;
+          pos.setXYZ(j, vx + noise, vy + noise, vz + noise);
         }
-      });
+        geo.computeVertexNormals();
+
+        const x = (random() - 0.5) * 6000;
+        const z = (random() - 0.5) * 6000;
+        const rock = new THREE.Mesh(geo, plateauMat);
+        const y = terrainHeightAt(x, z) - 15;
+
+        rock.position.set(x, y, z);
+        rock.scale.set(1, 0.3 + random() * 0.12, 1);
+        rock.rotation.y = random() * Math.PI;
+        scene.add(rock);
+        objects.push(rock);
+      }
     }
 
+    function createSandworm() {
+      sandworm = new THREE.Group();
+
+      for (let i = 0; i < 26; i++) {
+        const radius = 18 - i * 0.45;
+        const seg = new THREE.Mesh(
+          new THREE.TorusGeometry(radius, 4, 10, 18),
+          new THREE.MeshLambertMaterial({ color: 0x3d2c20 })
+        );
+        seg.rotation.x = Math.PI / 2;
+        seg.position.z = i * 8.5;
+        sandworm.add(seg);
+      }
+
+      const mouth = new THREE.Mesh(
+        new THREE.CylinderGeometry(18, 18, 6, 14, 1, true),
+        new THREE.MeshBasicMaterial({ color: 0x070707 })
+      );
+      mouth.rotation.x = Math.PI / 2;
+      mouth.position.z = -2.5;
+      sandworm.add(mouth);
+
+      sandworm.position.y = -200;
+      scene.add(sandworm);
+
+      const signGeo = new THREE.BufferGeometry();
+      const n = 480;
+      const arr = new Float32Array(n * 3);
+      signGeo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+      wormSignParticles = new THREE.Points(
+        signGeo,
+        new THREE.PointsMaterial({
+          color: 0xd2a370,
+          size: 4.5,
+          transparent: true,
+          opacity: 0.5
+        })
+      );
+      scene.add(wormSignParticles);
+    }
+
+    function spawnEnemies() {
+      const enemyGeo = new THREE.IcosahedronGeometry(1.2, 1);
+      const enemyMat = new THREE.MeshLambertMaterial({ color: 0x8a3b2c });
+
+      for (let i = 0; i < 6; i++) {
+        const x = (random() - 0.5) * 5000;
+        const z = (random() - 0.5) * 5000;
+        const enemy = {
+          mesh: new THREE.Mesh(enemyGeo, enemyMat),
+          health: 60,
+          speed: 15 + random() * 7,
+          attackTimer: 0,
+          followDist: 300,
+          closeAttack: 8
+        };
+
+        const y = terrainHeightAt(x, z) + 1.5;
+        enemy.mesh.position.set(x, y, z);
+        enemy.mesh.scale.set(1.5, 0.6, 0.8);
+        scene.add(enemy.mesh);
+        enemies.push(enemy);
+      }
+    }
+
+    function createStartingStructures() {
+      const x = 0, z = 0;
+      const y = terrainHeightAt(x, z);
+      placeStructure('foundation', x, y, z, true);
+      placeStructure('wall', x, y, z, true);
+      placeStructure('roof', x, y, z, true);
+      placeStructure('bench', x + 18, y, z, true);
+    }
+
+    // HUMAN & WEAPON MESHES
     function createHumanMesh(color = 0x5d4037) {
       const group = new THREE.Group();
       const mat = new THREE.MeshLambertMaterial({ color });
 
-      const head = new THREE.Mesh(new THREE.SphereGeometry(2.1, 8, 8), mat);
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(2.1, 8, 8),
+        mat
+      );
       head.position.y = 16.5;
       group.add(head);
 
-      const torso = new THREE.Mesh(new THREE.BoxGeometry(4.2, 8.5, 2.2), mat);
+      const torso = new THREE.Mesh(
+        new THREE.BoxGeometry(4.2, 8.5, 2.2),
+        mat
+      );
       torso.position.y = 11.2;
       group.add(torso);
 
@@ -614,7 +882,7 @@
       const bladeMat = new THREE.MeshStandardMaterial({
         color: 0xffffff,
         emissive: 0xffffff,
-        emissiveIntensity: 0.8,
+        emissiveIntensity: 0.85,
         metalness: 1,
         roughness: 0.1
       });
@@ -624,15 +892,24 @@
         roughness: 0.4
       });
 
-      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.22, 8, 0.55), bladeMat);
+      const blade = new THREE.Mesh(
+        new THREE.BoxGeometry(0.22, 8, 0.55),
+        bladeMat
+      );
       blade.position.y = 4.8;
       group.add(blade);
 
-      const guard = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.3, 0.85), hiltMat);
+      const guard = new THREE.Mesh(
+        new THREE.BoxGeometry(1.35, 0.3, 0.85),
+        hiltMat
+      );
       guard.position.y = 1.3;
       group.add(guard);
 
-      const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 1.7, 10), hiltMat);
+      const grip = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.17, 0.2, 1.7, 10),
+        hiltMat
+      );
       grip.position.y = 0.25;
       group.add(grip);
 
@@ -640,258 +917,136 @@
       return group;
     }
 
-    function init() {
-      scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xcc8855);
-      scene.fog = new THREE.FogExp2(0xcc8855, 0.0012);
+    // UI
+    function updateHudElements() {
+      const hud = document.getElementById('hud');
+      if (!hud) return;
 
-      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 12000);
-      camera.position.y = 10;
+      const online = 1 + otherPlayers.size;
 
-      const ambient = new THREE.HemisphereLight(0xeeeeff, 0x777788, 0.6);
-      ambient.position.set(0.5, 1, 0.75);
-      scene.add(ambient);
-
-      const dirLight = new THREE.DirectionalLight(0xffaa55, 1.2);
-      dirLight.position.set(100, 200, 50);
-      scene.add(dirLight);
-
-      controls = new PointerLockControls(camera, document.body);
-      scene.add(controls.getObject());
-
-      document.getElementById('blocker').addEventListener('click', () => controls.lock());
-      controls.addEventListener('lock', () => document.getElementById('blocker').style.display = 'none');
-      controls.addEventListener('unlock', () => document.getElementById('blocker').style.display = 'flex');
-
-      document.addEventListener('keydown', onKeyDown);
-      document.addEventListener('keyup', onKeyUp);
-      document.addEventListener('mousedown', onMouseDown);
-      window.addEventListener('resize', onWindowResize);
-      window.addEventListener('beforeunload', saveGame);
-
-      raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 30);
-      clickRaycaster = new THREE.Raycaster();
-
-      buildTerrain();
-      buildSpice();
-      buildRocksAndPlateaus();
-      createSandworm();
-      spawnEnemies();
-      createStartingStructures();
-
-      renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      document.body.appendChild(renderer.domElement);
-
-      initUI();
-      initSupabase();
-      initChatUI();
-      loadGame();
-      updateHUD();
-      updateLeaderboard();
-      setInterval(saveGame, 30000);
-      setInterval(updateLeaderboard, 2000);
-      setInterval(updateWaterDrain, 1000);
+      hud.innerHTML =
+        `Location: Deep Desert<br>` +
+        `Suit Status: ${health > 0 ? 'Optimal' : 'Critical'}<br>` +
+        `Water: ${Math.floor(water)}<br>` +
+        `Health: ${Math.floor(health)}<br>` +
+        `Online Players: ${online}<br>` +
+        `Weapon: ${equippedWeapon === 'sword' ? 'All White Sword' : 'Hands'}<br>` +
+        `Build: ${buildMode ? buildMode : 'None'}`;
     }
 
-    function buildTerrain() {
-      terrainGeo = new THREE.PlaneGeometry(world.terrainSize, world.terrainSize, world.terrainSegments, world.terrainSegments);
-      terrainGeo.rotateX(-Math.PI / 2);
+    function updateHudResources() {
+      const ws = document.getElementById('water-score');
+      const hs = document.getElementById('health-score');
+      const wo = document.getElementById('wood-score');
+      const st = document.getElementById('stone-score');
+      const fa = document.getElementById('fabric-score');
+      const el = document.getElementById('electronics-score');
+      const sst = document.getElementById('watersuit-tag');
 
-      const pos = terrainGeo.attributes.position;
-      for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i);
-        const z = pos.getZ(i);
-        let y = Math.sin(x / 120) * Math.cos(z / 120) * 35;
-        y += Math.sin(x / 500) * Math.cos(z / 500) * 90;
-        y += Math.sin((x + z) / 250) * 20;
-        pos.setY(i, y);
-      }
-      terrainGeo.computeVertexNormals();
-
-      terrain = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ color: 0xd4a373 }));
-      scene.add(terrain);
-      objects.push(terrain);
+      if (ws) ws.innerText = Math.floor(water);
+      if (hs) hs.innerText = Math.floor(health);
+      if (wo) wo.innerText = wood;
+      if (st) st.innerText = stone;
+      if (fa) fa.innerText = fabric;
+      if (el) el.innerText = electronics;
+      if (sst) sst.innerText = hasStillsuit ? 'Stillsuit: Yes' : 'Stillsuit: No';
     }
 
-    function buildSpice() {
-      const geo = new THREE.BufferGeometry();
-      const arr = new Float32Array(16000 * 3);
-      for (let i = 0; i < arr.length; i += 3) {
-        arr[i] = (random() - 0.5) * 4000;
-        arr[i + 1] = random() * 80;
-        arr[i + 2] = (random() - 0.5) * 4000;
-      }
-      geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
-      spiceParticles = new THREE.Points(geo, new THREE.PointsMaterial({
-        color: 0xff5500,
-        size: 0.75,
-        transparent: true,
-        opacity: 0.75,
-        blending: THREE.AdditiveBlending
-      }));
-      scene.add(spiceParticles);
+    function updateHudMode() {
+      const ml = document.getElementById('build-mode-label');
+      const ms = document.getElementById('build-status');
+      if (!ml || !ms) return;
 
-      const crystalGeo = new THREE.DodecahedronGeometry(0.9, 0);
-      const crystalMat = new THREE.MeshStandardMaterial({
-        color: 0xff9d00,
-        emissive: 0xff5500,
-        emissiveIntensity: 0.9,
-        roughness: 0,
-        metalness: 1
-      });
-
-      for (let i = 0; i < 160; i++) {
-        const x = (random() - 0.5) * 3600;
-        const z = (random() - 0.5) * 3600;
-        const crystal = new THREE.Mesh(crystalGeo, crystalMat);
-        crystal.position.set(x, terrainHeightAt(x, z) + 0.25, z);
-        crystal.rotation.set(random(), random(), random());
-        scene.add(crystal);
-        spiceCrystals.push(crystal);
-      }
-
-      const sparkleGeo = new THREE.BufferGeometry();
-      const sparklePos = new Float32Array(22000 * 3);
-      for (let i = 0; i < sparklePos.length; i++) sparklePos[i] = (random() - 0.5) * 4000;
-      sparkleGeo.setAttribute('position', new THREE.BufferAttribute(sparklePos, 3));
-      sparkleSystem = new THREE.Points(
-        sparkleGeo,
-        new THREE.PointsMaterial({
-          color: 0xffcc88,
-          size: 0.25,
-          transparent: true,
-          opacity: 0.55,
-          blending: THREE.AdditiveBlending
-        })
-      );
-      scene.add(sparkleSystem);
+      ml.innerText = buildMode ?? 'None';
+      ms.innerText = buildMode
+        ? `Placing ${buildMode} (${keyForBuildCosts()})`
+        : 'Select a piece';
     }
 
-    function buildRocksAndPlateaus() {
-      const plateauMat = new THREE.MeshStandardMaterial({
-        color: 0x362c24,
-        roughness: 0.95,
-        flatShading: true
-      });
+    function keyForBuildCosts() {
+      const c = buildingCosts[buildMode];
+      if (!c) return '';
+      return Object.entries(c).map(([k, v]) => `${v} ${k}`).join(' ');
+    }
 
-      for (let i = 0; i < 24; i++) {
-        const size = 120 + random() * 100;
-        const geo = new THREE.IcosahedronGeometry(size, 3);
-        const pos = geo.attributes.position;
-        for (let j = 0; j < pos.count; j++) {
-          const vx = pos.getX(j);
-          const vy = pos.getY(j);
-          const vz = pos.getZ(j);
-          const noise = Math.sin(vx * 0.08) * Math.cos(vz * 0.08) * 7.5 + Math.sin(vy * 0.06) * 4.5;
-          pos.setXYZ(j, vx + noise, vy + noise, vz + noise);
+    function updateLeaderboard() {
+      const list = document.getElementById('leaderboard-list');
+      if (!list) return;
+
+      const board = [
+        { name: playerName, score: spiceScore, me: true },
+        ...Array.from(otherPlayers.values()).map(p => ({
+          name: p.name || 'Fremen-' + p.id.slice(0, 4),
+          score: p.melange || 0,
+          me: false
+        }))
+      ].sort((a, b) => b.score - a.score).slice(0, 12);
+
+      list.innerHTML = board.map((p, i) =>
+        `${i + 1}. ${p.name}${p.me ? ' (you)' : ''} – ${Math.floor(p.score)}`
+      ).join('<br>');
+    }
+
+    function addChatLine(text) {
+      const log = document.getElementById('chat-log');
+      if (!log) return;
+      const line = document.createElement('div');
+      line.textContent = text;
+      line.style.marginBottom = '2px';
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function initChatUI() {
+      const send = document.getElementById('chat-send');
+      const input = document.getElementById('chat-input');
+      if (!send || !input) return;
+
+      send.onclick = sendChat;
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          sendChat();
         }
-        geo.computeVertexNormals();
-        const rock = new THREE.Mesh(geo, plateauMat);
-        const x = (random() - 0.5) * 6000;
-        const z = (random() - 0.5) * 6000;
-        rock.position.set(x, terrainHeightAt(x, z) - 15, z);
-        rock.scale.set(1, 0.3 + random() * 0.12, 1);
-        rock.rotation.y = random() * Math.PI;
-        scene.add(rock);
-        objects.push(rock);
-      }
+      });
     }
 
-    function createSandworm() {
-      sandworm = new THREE.Group();
-      for (let i = 0; i < 26; i++) {
-        const radius = 18 - i * 0.45;
-        const seg = new THREE.Mesh(
-          new THREE.TorusGeometry(radius, 4, 10, 18),
-          new THREE.MeshLambertMaterial({ color: 0x3d2b1f })
-        );
-        seg.rotation.x = Math.PI / 2;
-        seg.position.z = i * 8.5;
-        sandworm.add(seg);
-      }
-      const mouth = new THREE.Mesh(
-        new THREE.CylinderGeometry(18, 18, 6, 14, 1, true),
-        new THREE.MeshBasicMaterial({ color: 0x070707 })
-      );
-      mouth.rotation.x = Math.PI / 2;
-      mouth.position.z = -2.5;
-      sandworm.add(mouth);
-      sandworm.position.y = -200;
-      scene.add(sandworm);
+    async function sendChat() {
+      const input = document.getElementById('chat-input');
+      if (!input || !chatChannel) return;
 
-      const signGeo = new THREE.BufferGeometry();
-      const signPos = new Float32Array(480 * 3);
-      signGeo.setAttribute('position', new THREE.BufferAttribute(signPos, 3));
-      wormSignParticles = new THREE.Points(
-        signGeo,
-        new THREE.PointsMaterial({ color: 0xc89b68, size: 5, transparent: true, opacity: 0.5 })
-      );
-      scene.add(wormSignParticles);
-    }
+      const text = input.value.trim();
+      if (!text) return;
 
-    function spawnEnemies() {
-      for (let i = 0; i < 10; i++) {
-        const x = (random() - 0.5) * 5000;
-        const z = (random() - 0.5) * 5000;
-        const enemy = {
-          mesh: createHumanMesh(0x8a3b2c),
-          health: 60,
-          speed: 16 + random() * 8,
-          attackTimer: 0
-        };
-        enemy.mesh.position.set(x, terrainHeightAt(x, z) + 8, z);
-        scene.add(enemy.mesh);
-        enemies.push(enemy);
-      }
-    }
-
-    function createStartingStructures() {
-      const x = 0, z = 0;
-      placeStructure('foundation', x, terrainHeightAt(x, z), z, true);
-      placeStructure('bench', x + 18, terrainHeightAt(x + 18, z), z, true);
-    }
-
-    function initUI() {
-      function toggle(id) {
-        const el = document.getElementById(id);
-        el.classList.toggle('active');
-      }
-
-      document.getElementById('btn-toggle-build').onclick = () => toggle('dropdown-build');
-      document.getElementById('btn-toggle-guild').onclick = () => toggle('dropdown-guild');
-      document.getElementById('btn-toggle-leaderboard').onclick = () => toggle('dropdown-leaderboard');
-
-      document.getElementById('mode-foundation').onclick = () => setBuildMode('foundation');
-      document.getElementById('mode-wall').onclick = () => setBuildMode('wall');
-      document.getElementById('mode-roof').onclick = () => setBuildMode('roof');
-      document.getElementById('mode-bench').onclick = () => setBuildMode('bench');
-      document.getElementById('mode-cancel').onclick = () => setBuildMode(null);
-
-      document.getElementById('weapon-none').onclick = () => setWeapon('hands');
-      document.getElementById('weapon-sword').onclick = () => setWeapon('sword');
-
-      document.getElementById('buy-water').onclick = () => buyResource('water');
-      document.getElementById('buy-wood').onclick = () => buyResource('wood');
-      document.getElementById('buy-stone').onclick = () => buyResource('stone');
-      document.getElementById('buy-fabric').onclick = () => buyResource('fabric');
-      document.getElementById('buy-electronics').onclick = () => buyResource('electronics');
-      document.getElementById('buy-heal').onclick = () => buyResource('heal');
+      input.value = '';
+      try {
+        await chatChannel.send({
+          type: 'broadcast',
+          event: 'chat',
+          payload: {
+            id: myId,
+            name: playerName,
+            text,
+            ts: Date.now()
+          }
+        });
+      } catch {}
     }
 
     function setWeapon(type) {
+      if (type === equippedWeapon) return;
       if (type === 'sword' && !swordMesh) {
         swordMesh = createSwordMesh();
-        swordMesh.position.set(1.2, 1.8, 1.3);
-        swordMesh.scale.set(0.45, 0.45, 0.45);
+        swordMesh.position.set(1.25, 1.9, 1.45);
+        swordMesh.scale.set(0.5, 0.5, 0.5);
         controls.getObject().add(swordMesh);
       } else if (type === 'hands' && swordMesh) {
         controls.getObject().remove(swordMesh);
         swordMesh = null;
       }
       equippedWeapon = type;
-      updateHUD();
+      updateHudElements();
+      updateHudMode();
       saveGame();
     }
 
@@ -901,16 +1056,39 @@
         scene.remove(buildPreview);
         buildPreview = null;
       }
-      if (mode) createBuildPreview(mode);
-      updateHUD();
+      if (mode) {
+        createBuildPreview(mode);
+      }
+      updateHudMode();
+      updateHudElements();
     }
 
     function createBuildPreview(mode) {
       let mesh = null;
-      if (mode === 'foundation') mesh = new THREE.Mesh(new THREE.BoxGeometry(12, 2, 12), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true }));
-      if (mode === 'wall') mesh = new THREE.Mesh(new THREE.BoxGeometry(12, 10, 1.5), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true }));
-      if (mode === 'roof') mesh = new THREE.Mesh(new THREE.BoxGeometry(13, 2, 13), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true }));
-      if (mode === 'bench') mesh = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 4), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true }));
+      if (mode === 'foundation') {
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(12, 2, 12),
+          new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, opacity: 0.5, transparent: true })
+        );
+      }
+      if (mode === 'wall') {
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(12, 10, 1.5),
+          new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, opacity: 0.5, transparent: true })
+        );
+      }
+      if (mode === 'roof') {
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(13, 2, 13),
+          new THREE.MeshBasicMedium({ color: 0xffffff, wireframe: true, opacity: 0.5, transparent: true })
+        );
+      }
+      if (mode === 'bench') {
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(6, 4, 4),
+          new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, opacity: 0.5, transparent: true })
+        );
+      }
       if (!mesh) return;
       buildPreview = mesh;
       scene.add(buildPreview);
@@ -920,25 +1098,32 @@
       if (item === 'water' && spiceScore >= 10) {
         spiceScore -= 10;
         water = Math.min(100, water + 40);
-      } else if (item === 'wood' && spiceScore >= 8) {
+      }
+      else if (item === 'wood' && spiceScore >= 8) {
         spiceScore -= 8;
         wood += 3;
-      } else if (item === 'stone' && spiceScore >= 10) {
+      }
+      else if (item === 'stone' && spiceScore >= 10) {
         spiceScore -= 10;
         stone += 3;
-      } else if (item === 'fabric' && spiceScore >= 12) {
+      }
+      else if (item === 'fabric' && spiceScore >= 12) {
         spiceScore -= 12;
         fabric += 2;
-      } else if (item === 'electronics' && spiceScore >= 18) {
+      }
+      else if (item === 'electronics' && spiceScore >= 18) {
         spiceScore -= 18;
         electronics += 1;
-      } else if (item === 'heal' && spiceScore >= 15) {
+      }
+      else if (item === 'heal' && spiceScore >= 15) {
         spiceScore -= 15;
         health = Math.min(100, health + 35);
-      } else {
+      }
+      else {
         return;
       }
-      updateHUD();
+      updateHudElements();
+      updateHudResources();
       saveGame();
     }
 
@@ -947,11 +1132,15 @@
     }
 
     function spendMaterials(costs) {
-      if ((wood < (costs.wood || 0)) || (stone < (costs.stone || 0)) || (electronics < (costs.electronics || 0))) return false;
+      for (const k of ['wood','stone','electronics']) {
+        const need = costs[k] || 0;
+        const have = { wood, stone, electronics }[k];
+        if (have < need) return false;
+      }
       wood -= costs.wood || 0;
       stone -= costs.stone || 0;
       electronics -= costs.electronics || 0;
-      updateHUD();
+      updateHudResources();
       return true;
     }
 
@@ -965,7 +1154,9 @@
     }
 
     function isOccupied(x, z) {
-      return structures.some(s => s.mesh.position.distanceTo(new THREE.Vector3(x, s.mesh.position.y, z)) < 4);
+      return structures.some(s =>
+        s.mesh.position.distanceTo(new THREE.Vector3(x, s.mesh.position.y, z)) < 4
+      );
     }
 
     function placeStructure(type, x, y, z, free = false) {
@@ -976,22 +1167,38 @@
       const key = keyForGrid(x, z);
 
       if (type === 'foundation') {
-        mesh = new THREE.Mesh(new THREE.BoxGeometry(12, 2, 12), new THREE.MeshStandardMaterial({ color: 0x7c5b39, roughness: 1 }));
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(12, 2, 12),
+          new THREE.MeshStandardMaterial({ color: 0x7c5b39, roughness: 1 })
+        );
         mesh.position.set(x, y + 1, z);
         placedFoundations.set(key, true);
-      } else if (type === 'wall') {
-        mesh = new THREE.Mesh(new THREE.BoxGeometry(12, 10, 1.5), new THREE.MeshStandardMaterial({ color: 0x8f6a45, roughness: 1 }));
+      }
+      else if (type === 'wall') {
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(12, 10, 1.5),
+          new THREE.MeshStandardMaterial({ color: 0x8f6a45, roughness: 1 })
+        );
         mesh.position.set(x, y + 6, z);
         placedWalls.set(key, true);
-      } else if (type === 'roof') {
-        mesh = new THREE.Mesh(new THREE.BoxGeometry(13, 2, 13), new THREE.MeshStandardMaterial({ color: 0x6f4b2e, roughness: 1 }));
+      }
+      else if (type === 'roof') {
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(13, 2, 13),
+          new THREE.MeshStandardMaterial({ color: 0x6f4b2e, roughness: 1 })
+        );
         mesh.position.set(x, y + 11, z);
         placedRoofs.set(key, true);
-      } else if (type === 'bench') {
-        mesh = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 4), new THREE.MeshStandardMaterial({ color: 0x4a3422, roughness: 1 }));
+      }
+      else if (type === 'bench') {
+        mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(6, 4, 4),
+          new THREE.MeshStandardMaterial({ color: 0x4a3422, roughness: 1 })
+        );
         mesh.position.set(x, y + 2, z);
         craftingBenches.push(mesh);
-      } else {
+      }
+      else {
         return false;
       }
 
@@ -1009,73 +1216,47 @@
       return hits.length ? hits[0].point : null;
     }
 
-    function onKeyDown(event) {
-      if (event.target !== document.body) return;
-      event.preventDefault();
-
-      switch (event.code) {
-        case 'KeyW': moveForward = true; break;
-        case 'KeyS': moveBackward = true; break;
-        case 'KeyA': moveLeft = true; break;
-        case 'KeyD': moveRight = true; break;
-        case 'ShiftLeft':
-          moveShift = true;
-          break;
-        case 'Space':
-          if (canJump) velocity.y += 350;
-          canJump = false;
-          break;
-        case 'KeyE':
-          interact();
-          break;
-        case 'KeyQ':
-          setWeapon(equippedWeapon === 'sword' ? 'hands' : 'sword');
-          break;
-        case 'Digit1':
-          setBuildMode('foundation');
-          break;
-        case 'Digit2':
-          setBuildMode('wall');
-          break;
-        case 'Digit3':
-          setBuildMode('roof');
-          break;
-        case 'Digit4':
-          setBuildMode('bench');
-          break;
-        case 'Escape':
-          setBuildMode(null);
-          break;
-      }
-    }
-
-    function onKeyUp(event) {
-      if (event.target !== document.body) return;
-      event.preventDefault();
-
-      switch (event.code) {
-        case 'KeyW': moveForward = false; break;
-        case 'KeyS': moveBackward = false; break;
-        case 'KeyA': moveLeft = false; break;
-        case 'KeyD': moveRight = false; break;
-        case 'ShiftLeft': moveShift = false; break;
-      }
-    }
-
-    function onMouseDown() {
-      if (!controls.isLocked) return;
-      event.preventDefault();
-
+    function interact() {
       if (buildMode) {
         placeBuildAtCrosshair();
         return;
       }
+      if (tryCraftFromBench()) return;
+      collectWithHands();
+    }
 
-      if (equippedWeapon === 'sword') {
-        attackWithSword();
-      } else {
-        collectWithHands();
+    function placeBuildAtCrosshair() {
+      const point = getCrosshairGroundPoint();
+      if (!point || !buildMode) return;
+      const x = Math.round(point.x / 12) * 12;
+      const z = Math.round(point.z / 12) * 12;
+      const y = terrainHeightAt(x, z);
+      placeStructure(buildMode, x, y, z);
+      updateHudMode();
+      updateHudElements();
+    }
+
+    function isInteractingNearBench() {
+      return craftingBenches.some(
+        b => b.position.distanceTo(camera.position) < 14
+      );
+    }
+
+    function tryCraftFromBench() {
+      if (!isInteractingNearBench()) return false;
+      if (hasStillsuit) return false;
+      if (wood >= 2 && fabric >= 2 && electronics >= 1) {
+        wood -= 2;
+        fabric -= 2;
+        electronics -= 1;
+        hasStillsuit = true;
+        water = Math.min(100, water + 20);
+        updateHudElements();
+        updateHudResources();
+        saveGame();
+        return true;
       }
+      return false;
     }
 
     function collectWithHands() {
@@ -1085,7 +1266,7 @@
       if (spiceCrystals.includes(obj) && obj.visible) {
         obj.visible = false;
         spiceScore += 50;
-        updateHUD();
+        updateHudElements();
         saveGame();
       }
     }
@@ -1112,67 +1293,36 @@
       });
 
       if (hit) {
-        document.getElementById('combat-warning').style.display = 'block';
+        const el = document.getElementById('combat-warning');
+        if (el) {
+          el.textContent = 'COMBAT ENGAGED';
+          el.style.display = 'block';
+        }
         clearTimeout(attackWithSword._t);
-        attackWithSword._t = setTimeout(() => document.getElementById('combat-warning').style.display = 'none', 500);
-        updateHUD();
+        attackWithSword._t = setTimeout(() => {
+          if (el) el.style.display = 'none';
+        }, 500);
+        updateHudElements();
+        updateHudResources();
         saveGame();
       }
-    }
-
-    function interact() {
-      if (tryCraftFromBench()) return;
-      if (buildMode) {
-        placeBuildAtCrosshair();
-        return;
-      }
-      collectWithHands();
-    }
-
-    function placeBuildAtCrosshair() {
-      const point = getCrosshairGroundPoint();
-      if (!point || !buildMode) return;
-      const x = Math.round(point.x / 12) * 12;
-      const z = Math.round(point.z / 12) * 12;
-      const y = terrainHeightAt(x, z);
-      placeStructure(buildMode, x, y, z);
-      updateHUD();
-    }
-
-    function isInteractingNearBench() {
-      return craftingBenches.some(b => b.position.distanceTo(camera.position) < 10);
-    }
-
-    function tryCraftFromBench() {
-      if (!isInteractingNearBench()) return false;
-      if (hasStillsuit) return false;
-      if (wood >= 2 && fabric >= 2 && electronics >= 1) {
-        wood -= 2;
-        fabric -= 2;
-        electronics -= 1;
-        hasStillsuit = true;
-        water = Math.min(100, water + 20);
-        updateHUD();
-        saveGame();
-        return true;
-      }
-      return false;
     }
 
     function updateWaterDrain() {
       if (!controls.isLocked) return;
-      const baseDrain = moveShift ? 0.15 : 0.4;
-      const drain = hasStillsuit ? baseDrain * 0.45 : baseDrain;
-      water -= drain;
+      const baseRate = moveShift ? 0.1 : 0.35;
+      const rate = hasStillsuit ? baseRate * 0.4 : baseRate;
+      water -= rate;
       if (water <= 0) {
         water = 0;
-        health -= 0.8;
+        health -= 0.65;
         if (health <= 0) {
           health = 0;
-          location.reload();
+          setTimeout(() => location.reload(), 500);
         }
       }
-      updateHUD();
+      updateHudElements();
+      updateHudResources();
       saveGame();
     }
 
@@ -1181,10 +1331,319 @@
       return clickRaycaster.intersectObjects([...spiceCrystals, ...structures.map(s => s.mesh)], false);
     }
 
+    function syncBuildPreview() {
+      if (!buildPreview || !controls.isLocked) return;
+      const point = getCrosshairGroundPoint();
+      if (!point) return;
+      const x = Math.round(point.x / 12) * 12;
+      const z = Math.round(point.z / 12) * 12;
+      const y = terrainHeightAt(x, z);
+      buildPreview.position.set(x, y, z);
+    }
+
+    function updateDayNight(time) {
+      const elapsedSec = time / 1000;
+      const phaseSec = DAY_DURATION_SEC;
+      dayNightT = elapsedSec % phaseSec;
+      dayNightPhase = dayNightT / phaseSec;
+
+      const isNight = dayNightPhase > 0.25 && dayNightPhase < 0.75;
+
+      const sky = isNight
+        ? world.dayNight.nightSky
+        : world.dayNight.daySky.clone().lerp(new THREE.Color(0xe9d0a5), 0.15);
+
+      const fog = isNight
+        ? world.dayNight.nightFog
+        : world.dayNight.dayFog;
+
+      const amb = isNight
+        ? world.dayNight.nightAmb
+        : world.dayNight.dayAmb;
+
+      const dir = isNight
+        ? world.dayNight.nightDir
+        : world.dayNight.dayDir.clone().lerp(new THREE.Color(0xf1d0a0), 0.1);
+
+      scene.background = sky;
+      scene.fog.color = fog;
+      const ambLight = scene.getObjectByName('ambient');
+      if (ambLight) ambLight.color.copy(amb);
+      const dirLight = scene.getObjectByName('dirLight');
+      if (dirLight) dirLight.color.copy(dir);
+
+      const tint = isNight ? 0.85 : 0.7;
+      sparkleSystem.material.color.setHex(0xffcc88).multiplyScalar(tint);
+      sparkleSystem.material.opacity = isNight ? 0.75 : 0.55;
+    }
+    
+    function updateMinimap() {
+      const grid = document.getElementById('player-dots');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      const own = new THREE.Vector3();
+      controls.getObject().getWorldPosition(own);
+
+      const scale = 0.02;
+      const cx = 70, cy = 70;
+      
+      const dotSelf = document.createElement('div');
+      dotSelf.style.cssText =
+        'position:absolute;width:5px;height:5px;' +
+        'border-radius:50%;background:#00ff00;transform:translate(-50%,-50%);';
+      dotSelf.style.left = cx + 'px';
+      dotSelf.style.top = cy + 'px';
+      grid.appendChild(dotSelf);
+
+      for (const player of otherPlayers.values()) {
+        const p = player.mesh.position;
+        const dx = (p.x - own.x) * scale;
+        const dz = (p.z - own.z) * scale;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist > 75) continue;
+
+        const dot = document.createElement('div');
+        dot.style.cssText =
+          'position:absolute;width:5px;height:5px;border-radius:50%;' +
+          `background:${player.isSandwalking ? '#ffc266' : '#ff6666'};` +
+          'transform:translate(-50%,-50%);';
+        dot.style.left = (cx + dx) + 'px';
+        dot.style.top  = (cy + dz) + 'px';
+        grid.appendChild(dot);
+      }
+    }
+
+    function updateSandworm(delta, pPos, dY, onRock) {
+      wormTimer += delta;
+
+      if (wormState === 'idle' && wormTimer > 35 && Math.random() < 0.004) {
+        wormState = 'wormsign';
+        wormTimer = 0;
+        const angle = random() * Math.PI * 2;
+        sandworm.position.set(
+          pPos.x + Math.cos(angle) * 180,
+          -52,
+          pPos.z + Math.sin(angle) * 180
+        );
+        const el = document.getElementById('worm-warning');
+        if (el) {
+          el.textContent = 'WORMSIGN DETECTED! – FLEE TO ROCKS';
+          el.style.display = 'block';
+        }
+        buildSpiceBeacon(sandworm.position.x, sandworm.position.z, 180);
+      }
+
+      if (wormState === 'wormsign') {
+        const dYOffset = 4;
+        camera.position.x += (random() - 0.5) * 0.9;
+        camera.position.y += (random() - 0.5) * 0.9;
+        const p = wormSignParticles.geometry.attributes.position.array;
+        for (let i = 0; i < p.length; i += 3) {
+          p[i]     = sandworm.position.x + (random() - 0.5) * 110;
+          p[i + 1] = dY + dYOffset + random() * 24;
+          p[i + 2] = sandworm.position.z + (random() - 0.5) * 110;
+        }
+        wormSignParticles.geometry.attributes.position.needsUpdate = true;
+        if (wormTimer > 8.5) {
+          wormState = 'attack';
+          wormTimer = 0;
+        }
+      }
+
+      if (wormState === 'attack') {
+        sandworm.lookAt(pPos.x, dY, pPos.z);
+        sandworm.position.lerp(
+          new THREE.Vector3(pPos.x, dY + 20, pPos.z),
+          0.04
+        );
+        if (sandworm.position.distanceTo(pPos) < 26 && !onRock) {
+          health -= 50;
+          water = 0;
+          updateHudElements();
+          updateHudResources();
+          if (health <= 0) {
+            setTimeout(() => location.reload(), 600);
+          }
+        }
+        if (wormTimer > 6) {
+          wormState = 'idle';
+          wormTimer = 0;
+          sandworm.position.y = -200;
+          const el = document.getElementById('worm-warning');
+          if (el) el.style.display = 'none';
+          const p = wormSignParticles.geometry.attributes.position.array;
+          p.fill(0);
+          wormSignParticles.geometry.attributes.position.needsUpdate = true;
+        }
+      }
+    }
+
+    function updateMultiplayer(delta, time) {
+      otherPlayers.forEach(data => {
+        if (!data.mesh) return;
+        data.mesh.position.lerp(
+          new THREE.Vector3(data.targetPos.x, data.targetPos.y - 18, data.targetPos.z),
+          0.12
+        );
+        data.mesh.rotation.y = THREE.MathUtils.lerp(
+          data.mesh.rotation.y,
+          data.targetRot,
+          0.12
+        );
+        data.mesh.rotation.z = data.isSandwalking
+          ? Math.sin(time * 0.0055) * 0.14
+          : 0;
+      });
+    }
+
+    function updateEnemies(delta) {
+      const p = camera.position;
+      enemies.forEach(enemy => {
+        if (enemy.health <= 0) return;
+        const dir = p.clone().sub(enemy.mesh.position);
+        const dist = dir.length();
+        dir.normalize();
+        if (dist < enemy.followDist) {
+          enemy.mesh.position.addScaledVector(
+            dir, enemy.speed * delta * 0.5
+          );
+          enemy.mesh.lookAt(p);
+          if (dist < enemy.closeAttack && enemy.attackTimer <= 0) {
+            health -= 2.2;
+            enemy.attackTimer = 1.4;
+          }
+        }
+        if (enemy.attackTimer > 0) {
+          enemy.attackTimer -= delta;
+        }
+      });
+    }
+
+    function onKeyDown(e) {
+      if (e.target !== document.body) return;
+      e.preventDefault();
+
+      switch (e.code) {
+        case 'KeyW': moveForward = true; break;
+        case 'KeyS': moveBackward = true; break;
+        case 'KeyA': moveLeft = true; break;
+        case 'KeyD': moveRight = true; break;
+        case 'ShiftLeft':
+          moveShift = true;
+          break;
+        case 'Space':
+          if (canJump) velocity.y += 350;
+          canJump = false;
+          break;
+        case 'KeyQ':
+          setWeapon(equippedWeapon === 'sword' ? 'hands' : 'sword');
+          break;
+        case 'Digit1':
+          setBuildMode('foundation');
+          break;
+        case 'Digit2':
+          setBuildMode('wall');
+          break;
+        case 'Digit3':
+          setBuildMode('roof');
+          break;
+        case 'Digit4':
+          setBuildMode('bench');
+          break;
+        case 'KeyT':
+          const input = document.getElementById('chat-input');
+          const chat = document.getElementById('chat-ui');
+          if (input && chat.style.display === 'none') {
+            chat.style.display = 'block';
+            input.focus();
+          } else if (input) {
+            input.blur();
+            chat.style.display = 'none';
+          }
+          break;
+        case 'Escape':
+          setBuildMode(null);
+          const build = document.getElementById('dropdown-build');
+          if (build?.classList.contains('active')) {
+            build.classList.remove('active');
+          }
+          const guild = document.getElementById('dropdown-guild');
+          if (guild?.classList.contains('active')) {
+            guild.classList.remove('active');
+          }
+          const leader = document.getElementById('dropdown-leaderboard');
+          if (leader?.classList.contains('active')) {
+            leader.classList.remove('active');
+          }
+          break;
+      }
+    }
+
+    function onKeyUp(e) {
+      if (e.target !== document.body) return;
+      e.preventDefault();
+
+      switch (e.code) {
+        case 'KeyW': moveForward = false; break;
+        case 'KeyS': moveBackward = false; break;
+        case 'KeyA': moveLeft = false;  break;
+        case 'KeyD': moveRight = false;  break;
+        case 'ShiftLeft': moveShift = false; break;
+      }
+    }
+
+    function onMouseDown() {
+      if (!controls.isLocked) return;
+      event.preventDefault();
+
+      if (buildMode) {
+        placeBuildAtCrosshair();
+        return;
+      }
+
+      if (equippedWeapon === 'sword') {
+        attackWithSword();
+      } else {
+        collectWithHands();
+      }
+    }
+
     function onWindowResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function initUI() {
+      const btns = ['btn-toggle-build', 'btn-toggle-guild', 'btn-toggle-leaderboard'];
+      const dropdowns = ['dropdown-build', 'dropdown-guild', 'dropdown-leaderboard'];
+
+      for (let i = 0; i < btns.length; i++) {
+        const btn = document.getElementById(btns[i]);
+        const drop = document.getElementById(dropdowns[i]);
+        if (btn && drop) {
+          btn.addEventListener('click', () => {
+            drop.classList.toggle('active');
+          });
+        }
+      }
+
+      document.getElementById('mode-foundation')?.addEventListener('click', () => setBuildMode('foundation'));
+      document.getElementById('mode-wall')?.addEventListener('click', () => setBuildMode('wall'));
+      document.getElementById('mode-roof')?.addEventListener('click', () => setBuildMode('roof'));
+      document.getElementById('mode-bench')?.addEventListener('click', () => setBuildMode('bench'));
+      document.getElementById('mode-cancel')?.addEventListener('click', () => setBuildMode(null));
+
+      document.getElementById('weapon-none')?.addEventListener('click', () => setWeapon('hands'));
+      document.getElementById('weapon-sword')?.addEventListener('click', () => setWeapon('sword'));
+
+      document.getElementById('buy-water')?.addEventListener('click', () => buyResource('water'));
+      document.getElementById('buy-wood')?.addEventListener('click', () => buyResource('wood'));
+      document.getElementById('buy-stone')?.addEventListener('click', () => buyResource('stone'));
+      document.getElementById('buy-fabric')?.addEventListener('click', () => buyResource('fabric'));
+      document.getElementById('buy-electronics')?.addEventListener('click', () => buyResource('electronics'));
+      document.getElementById('buy-heal')?.addEventListener('click', () => buyResource('heal'));
     }
 
     function initSupabase() {
@@ -1200,9 +1659,9 @@
           const state = presenceChannel.presenceState();
           const seen = new Set();
 
-          Object.values(state).forEach(entries => {
-            entries.forEach(p => {
-              if (!p.id || p.id === myId) return;
+          for (const entries of Object.values(state)) {
+            for (const p of entries) {
+              if (!p.id || p.id === myId) continue;
               seen.add(p.id);
 
               if (!otherPlayers.has(p.id)) {
@@ -1215,28 +1674,35 @@
                   isSandwalking: false,
                   health: p.health ?? 100,
                   melange: p.melange ?? 0,
-                  name: p.name ?? 'Player'
+                  name: p.name ?? 'player_' + p.id
                 });
               }
 
               const data = otherPlayers.get(p.id);
-              data.targetPos.set(p.x ?? 0, p.y ?? 10, p.z ?? 0);
+              data.targetPos.set(
+                p.x ?? 0,
+                p.y ?? 10,
+                p.z ?? 0
+              );
               data.targetRot = p.rot ?? 0;
               data.isSandwalking = !!p.isSandwalking;
               data.health = p.health ?? 100;
               data.melange = p.melange ?? 0;
-              data.name = p.name ?? 'Player';
-            });
-          });
+              data.name = p.name ?? data.name;
+            }
+          }
 
-          otherPlayers.forEach((value, id) => {
+          for (const [id, data] of otherPlayers) {
             if (!seen.has(id)) {
-              scene.remove(value.mesh);
+              if (data.mesh) {
+                scene.remove(data.mesh);
+              }
               otherPlayers.delete(id);
             }
-          });
+          }
 
-          updateHUD();
+          updateHudElements();
+          updateHudResources();
           updateLeaderboard();
         })
         .on('broadcast', { event: 'move' }, ({ payload }) => {
@@ -1252,23 +1718,26 @@
               isSandwalking: false,
               health: 100,
               melange: 0,
-              name: payload.name || 'Player'
+              name: payload.name || 'player_' + payload.id
             });
           }
 
           const data = otherPlayers.get(payload.id);
-          data.targetPos.set(payload.pos.x, payload.pos.y, payload.pos.z);
-          data.targetRot = payload.rot;
-          data.isSandwalking = payload.isSandwalking;
-          data.health = payload.health ?? data.health;
-          data.melange = payload.melange ?? data.melange;
-          data.name =	payload.name ?? data.name;
-          updateLeaderboard();
+          if (data) {
+            data.targetPos.set(payload.pos.x, payload.pos.y, payload.pos.z);
+            data.targetRot = payload.rot;
+            data.isSandwalking = payload.isSandwalking;
+            data.health = payload.health ?? data.health;
+            data.melange = payload.melange ?? data.melange;
+            data.name = payload.name ?? data.name;
+            updateLeaderboard();
+          }
         })
         .on('broadcast', { event: 'chat' }, ({ payload }) => {
           if (!payload) return;
           chatMessages.push(payload);
-          addChatLine(`${payload.name}: ${payload.text}`);
+          const name = payload.name || 'Anonymous';
+          addChatLine(`${name}: ${payload.text}`);
         })
         .subscribe(async status => {
           if (status === 'SUBSCRIBED') {
@@ -1293,13 +1762,18 @@
     async function syncPresence() {
       if (!presenceChannel || !controls.isLocked) return;
 
+      const myPos = new THREE.Vector3();
+      const myRot = new THREE.Euler();
+      controls.getObject().getWorldPosition(myPos);
+      controls.getObject().getWorldRotation(myRot);
+
       await presenceChannel.track({
         id: myId,
         name: playerName,
-        x: camera.position.x,
-        y: camera.position.y,
-        z: camera.position.z,
-        rot: camera.rotation.y,
+        x: myPos.x,
+        y: myPos.y,
+        z: myPos.z,
+        rot: myRot.y,
         isSandwalking: moveShift,
         health,
         melange: spiceScore
@@ -1311,8 +1785,8 @@
         payload: {
           id: myId,
           name: playerName,
-          pos: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
-          rot: camera.rotation.y,
+          pos: { x: myPos.x, y: myPos.y, z: myPos.z },
+          rot: myRot.y,
           isSandwalking: moveShift,
           health,
           melange: spiceScore
@@ -1320,160 +1794,81 @@
       });
     }
 
-    function updateMultiplayer(delta, time) {
-      otherPlayers.forEach(data => {
-        data.mesh.position.lerp(
-          new THREE.Vector3(data.targetPos.x, data.targetPos.y - 18, data.targetPos.z),
-          0.12
-        );
-        data.mesh.rotation.y = THREE.MathUtils.lerp(data.mesh.rotation.y, data.targetRot, 0.12);
-        data.mesh.rotation.z = data.isSandwalking ? Math.sin(time * 0.0055) * 0.12 : 0;
+    function init() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xe6cc99);
+      scene.fog = new THREE.FogExp2(0xcc8855, 0.0012);
+
+      const ambient = new THREE.HemisphereLight(
+        world.dayNight.dayAmb,
+        new THREE.Color(0x777788),
+        0.6
+      );
+      ambient.position.set(0.5, 1, 0.75);
+      ambient.name = 'ambient';
+      scene.add(ambient);
+
+      const dirLight = new THREE.DirectionalLight(
+        world.dayNight.dayDir,
+        1.2
+      );
+      dirLight.position.set(100, 200, 50);
+      dirLight.name = 'dirLight';
+      scene.add(dirLight);
+
+      camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        1,
+        12000
+      );
+      camera.position.y = 10;
+
+      controls = new PointerLockControls(camera, document.body);
+      scene.add(controls.getObject());
+
+      document.getElementById('blocker').addEventListener('click', () => controls.lock());
+      controls.addEventListener('lock', () => {
+        const b = document.getElementById('blocker');
+        if (b) b.style.display = 'none';
       });
-    }
-
-    function updateEnemies(delta) {
-      const p = camera.position;
-      enemies.forEach(enemy => {
-        if (enemy.health <= 0) return;
-        const dir = p.clone().sub(enemy.mesh.position);
-        const dist = dir.length();
-        dir.normalize();
-        if (dist < 280) {
-          enemy.mesh.position.addScaledVector(dir, enemy.speed * delta * 0.55);
-          enemy.mesh.lookAt(p);
-          if (dist < 6.5 && enemy.attackTimer <= 0) {
-            health -= 2.5;
-            enemy.attackTimer = 1.3;
-          }
-        }
-        if (enemy.attackTimer > 0) enemy.attackTimer -= delta;
+      controls.addEventListener('unlock', () => {
+        const b = document.getElementById('blocker');
+        if (b) b.style.display = 'flex';
       });
-    }
 
-    function updateSandworm(delta, pPos, dY, onRock) {
-      wormTimer += delta;
+      document.addEventListener('keydown', onKeyDown, { passive: false });
+      document.addEventListener('keyup', onKeyUp, { passive: false });
+      document.addEventListener('mousedown', onMouseDown, { passive: false });
+      window.addEventListener('resize', onWindowResize);
+      window.addEventListener('beforeunload', saveGame);
 
-      if (wormState === 'idle' && wormTimer > 30 && Math.random() < 0.005) {
-        wormState = 'wormsign';
-        wormTimer = 0;
-        const angle = random() * Math.PI * 2;
-        sandworm.position.set(pPos.x + Math.cos(angle) * 160, -50, pPos.z + Math.sin(angle) * 160);
-          document.getElementById('worm-warning').style.display = 'block';
-        }
-      }
+      raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 30);
+      clickRaycaster = new THREE.Raycaster();
 
-      if (wormState === 'wormsign') {
-        const dYOffset = 3;
-        camera.position.x += (random() - 0.5) * 0.75;
-        camera.position.y += (random() - 0.5) * 0.75;
-        const p = wormSignParticles.geometry.attributes.position.array;
-        for (let i = 0; i < p.length; i += 3) {
-          p[i] = sandworm.position.x + (random() - 0.5) * 100;
-          p[i + 1] = dY + dYOffset + random() * 22;
-          p[i + 2] = sandworm.position.z + (random() - 0.5) * 100;
-        }
-        wormSignParticles.geometry.attributes.position.needsUpdate = true;
-        if (wormTimer > 7.5) {
-          wormState = 'attack';
-          wormTimer = 0;
-        }
-      }
+      buildTerrain();
+      buildSpice();
+      buildRocksAndPlateaus();
+      createSandworm();
+      spawnEnemies();
+      createStartingStructures();
 
-      if (wormState === 'attack') {
-        sandworm.lookAt(pPos.x, dY, pPos.z);
-        sandworm.position.lerp(new THREE.Vector3(pPos.x, dY + 16, pPos.z), 0.045);
-        if (sandworm.position.distanceTo(pPos) < 24 && !onRock) {
-          health -= 40;
-          if (health <= 0) location.reload();
-        }
-        if (wormTimer > 5.5) {
-          wormState = 'idle';
-          wormTimer = 0;
-          sandworm.position.y = -200;
-          document.getElementById('worm-warning').style.display = 'none';
-          const p = wormSignParticles.geometry.attributes.position.array;
-          for (let i = 0; i < p.length; i++) p[i] = 0;
-          wormSignParticles.geometry.attributes.position.needsUpdate = true;
-        }
-      }
-    
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
 
-    function updateMinimap() {
-      const dotContainer = document.getElementById('player-dots');
-      dotContainer.innerHTML = '';
-      const scale = 0.02;
-      const centerX = 70;
-      const centerY = 70;
-
-      const mineY = 70;
-      const otherY = 70;
-
-      const ownDot = document.createElement('div');
-      ownDot.style.position = 'absolute';
-      ownDot.style.width = '5px';
-      ownDot.style.height = '5px';
-      ownDot.style.background = '#00ff00';
-      ownDot.style.borderRadius = '50%';
-      ownDot.style.left = (centerX) + 'px';
-      ownDot.style.top = (otherY) + 'px';
-      ownDot.style.transform = 'translate(-50%, -50%)';
-      dotContainer.appendChild(ownDot);
-
-      otherPlayers.forEach(data => {
-        const relX = (data.targetPos.x - camera.position.x) * scale;
-        const relZ = (data.targetPos.z - camera.position.z) * scale;
-        const dist = Math.sqrt(relX * relX + relZ * relZ);
-        if (dist < 70) {
-          const dot = document.createElement('div');
-          dot.style.position = 'absolute';
-          dot.style.width = '5px';
-          dot.style.height = '5px';
-          dot.style.background = data.isSandwalking ? '#ffd166' : '#ff3333';
-          dot.style.borderRadius = '50%';
-          dot.style.left = (centerX + relX) + 'px';
-          dot.style.top = (centerY + relZ) + 'px';
-          dot.style.transform = 'translate(-50%, -50%)';
-          dotContainer.appendChild(dot);
-        }
-      });
-    }
-
-    function syncBuildPreview() {
-      if (!buildPreview || !controls.isLocked) return;
-      const point = getCrosshairGroundPoint();
-      if (!point) return;
-      const x = Math.round(point.x / 12) * 12;
-      const z = Math.round(point.z / 12) * 12;
-      const y = terrainHeightAt(x, z);
-      buildPreview.position.set(x, y, z);
-    }
-
-    function updateDayNight(time) {
-      dayPhase = (time / 1000 / DAY_DURATION_SEC) % 1;
-      const isNight = dayPhase > 0.25 && dayPhase < 0.75;
-
-      const skyColor = isNight
-        ? new THREE.Color(0x0b0b22)
-        : new THREE.Color(0xffaa99).lerp(new THREE.Color(0x775533), 0.15);
-
-      const ambCol = isNight
-        ? new THREE.Color(0x222244)
-        : new THREE.Color(0xddccbb);
-
-      const dirCol = isNight
-        ? new THREE.Color(0x404050).lerp(new THREE.Color(0x8080ff), 0.3)
-        : new THREE.Color(0xffaa55).lerp(new THREE.Color(0xf0d8b0), 0.1);
-
-      scene.background = skyColor;
-      scene.fog.color = skyColor;
-      const amb = scene.getObjectByName('ambient');
-      if (amb) amb.color.copy(ambCol);
-      const dir = scene.getObjectByName('dirLight');
-      if (dir) dir.color.copy(dirCol);
-
-      const spiceTint = isNight ? 0.8 : 0.6;
-      sparkleSystem.material.color.setHex(0xffcc88).multiplyScalar(spiceTint);
-      sparkleSystem.material.opacity = isNight ? 0.8 : 0.6;
+      updateHudElements();
+      updateHudResources();
+      updateHudMode();
+      updateLeaderboard();
+      initUI();
+      initSupabase();
+      initChatUI();
+      loadGame();
+      setInterval(saveGame, 30000);
+      setInterval(updateWaterDrain, 1000);
+      setInterval(updateLeaderboard, 2000);
     }
 
     function animate() {
@@ -1492,22 +1887,27 @@
         }
         spiceParticles.geometry.attributes.position.needsUpdate = true;
 
-        sparkleSystem.rotation.y += 0.0015;
-        sparkleSystem.material.opacity = 0.5 + Math.sin(time * 0.0055) * 0.2;
+        sparkleSystem.rotation.y += 0.0018;
+        sparkleSystem.material.opacity = 0.5 + Math.sin(time * 0.0058) * 0.2;
 
         velocity.x -= velocity.x * 10.0 * delta;
-        velocity.z -= velocity.z * 10.0 * delta;
+               velocity.z -= velocity.z * 10.0 * delta;
         velocity.y -= 9.8 * 100.0 * delta;
 
         direction.z = Number(moveForward) - Number(moveBackward);
         direction.x = Number(moveRight) - Number(moveLeft);
         direction.normalize();
 
-        if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
-        if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
+        if (moveForward || moveBackward) {
+          velocity.z -= direction.z * 400.0 * delta;
+        }
+        if (moveLeft || moveRight) {
+          velocity.x -= direction.x * 400.0 * delta;
+        }
 
-        controls.moveRight(-velocity.x * delta);
-        controls.moveForward(-velocity.z * delta);
+        const speedFactor = moveShift ? 1.4 : 1;
+        controls.moveRight(-velocity.x * delta * speedFactor);
+        controls.moveForward(-velocity.z * delta * speedFactor);
         controls.getObject().position.y += velocity.y * delta;
 
         const pPos = controls.getObject().position;
@@ -1543,16 +1943,18 @@
         updateMultiplayer(delta, time);
         updateMinimap();
         syncBuildPreview();
-        updateHUD();
+        updateHudElements();
+        updateHudResources();
+        updateHudMode();
       }
 
       renderer.render(scene, camera);
       prevTime = time;
     }
+
+    init();
+    animate();
   </script>
 </body>
 </html>
-
-
-
     
