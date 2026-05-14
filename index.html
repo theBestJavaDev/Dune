@@ -8,11 +8,10 @@
   <style>
     :root {
       --sand: #d4a373;
-      --sand-dark: #b57a46;
-      --spice: #ff9d00;
-      --danger: #ff3300;
       --ui-bg: rgba(0,0,0,0.55);
       --ui-border: #d35400;
+      --spice: #ff9d00;
+      --danger: #ff3300;
       --white: #ffffff;
       --green: #6bff8a;
     }
@@ -25,9 +24,7 @@
       user-select: none;
     }
 
-    canvas {
-      display: block;
-    }
+    canvas { display: block; }
 
     #ui-layer {
       position: absolute;
@@ -43,10 +40,15 @@
       left: 50%;
       width: 10px;
       height: 10px;
-      border: 2px solid rgba(255,255,255,0.6);
+      border: 2px solid rgba(255,255,255,0.65);
       border-radius: 50%;
       transform: translate(-50%, -50%);
       box-sizing: border-box;
+    }
+
+    #hud, #spice-ui, #build-ui, #guild-ui, #leaderboard-ui, #chat-ui {
+      background: var(--ui-bg);
+      border: 1px solid var(--ui-border);
     }
 
     #hud {
@@ -55,8 +57,7 @@
       left: 20px;
       min-width: 240px;
       padding: 10px;
-      background: var(--ui-bg);
-      border-left: 3px solid var(--ui-border);
+      border-left-width: 3px;
       font-size: 15px;
       line-height: 1.45;
       color: #ffd39c;
@@ -67,8 +68,6 @@
       top: 20px;
       right: 20px;
       padding: 10px 18px;
-      background: var(--ui-bg);
-      border: 1px solid var(--ui-border);
       color: var(--spice);
       text-shadow: 0 0 10px #ff5500;
       font-size: 20px;
@@ -79,8 +78,6 @@
       top: 120px;
       left: 20px;
       width: 300px;
-      background: var(--ui-bg);
-      border: 1px solid var(--ui-border);
       padding: 10px;
       color: #ffe6c8;
       font-size: 14px;
@@ -88,42 +85,11 @@
       pointer-events: auto;
     }
 
-    #build-ui button,
-    #guild-ui button,
-    #chat-ui button,
-    #leaderboard-ui button {
-      font-family: inherit;
-      margin: 2px 2px 4px 0;
-      background: #2b1b12;
-      color: #ffe6c8;
-      border: 1px solid #8d5a2b;
-      padding: 6px 8px;
-      cursor: pointer;
-    }
-
-    #build-ui button.active,
-    #weapon-ui button.active {
-      background: #7a4a1a;
-      color: white;
-    }
-
-    #weapon-ui {
-      margin-top: 8px;
-    }
-
-    #resource-ui {
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px dashed #7b4d25;
-    }
-
     #guild-ui {
       position: absolute;
       top: 340px;
       left: 20px;
       width: 300px;
-      background: var(--ui-bg);
-      border: 1px solid var(--ui-border);
       padding: 10px;
       color: #ffe6c8;
       font-size: 14px;
@@ -136,8 +102,6 @@
       top: 120px;
       right: 20px;
       width: 250px;
-      background: var(--ui-bg);
-      border: 1px solid var(--ui-border);
       padding: 10px;
       color: #ffe6c8;
       font-size: 14px;
@@ -149,8 +113,6 @@
       right: 20px;
       bottom: 20px;
       width: 360px;
-      background: var(--ui-bg);
-      border: 1px solid var(--ui-border);
       padding: 10px;
       color: #ffe6c8;
       font-size: 14px;
@@ -182,6 +144,24 @@
       box-sizing: border-box;
     }
 
+    button {
+      font-family: inherit;
+      margin: 2px 2px 4px 0;
+      background: #2b1b12;
+      color: #ffe6c8;
+      border: 1px solid #8d5a2b;
+      padding: 6px 8px;
+      cursor: pointer;
+    }
+
+    button.active { background: #7a4a1a; color: white; }
+
+    #resource-ui {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed #7b4d25;
+    }
+
     #minimap {
       position: absolute;
       bottom: 20px;
@@ -207,14 +187,9 @@
       transform: translate(-50%, -50%);
     }
 
-    #player-dots {
-      position: absolute;
-      inset: 0;
-    }
+    #player-dots { position: absolute; inset: 0; }
 
-    #worm-warning,
-    #combat-warning,
-    #save-indicator {
+    #worm-warning, #combat-warning, #save-indicator {
       position: absolute;
       left: 50%;
       transform: translateX(-50%);
@@ -294,9 +269,9 @@
         SHIFT = Sandwalk / Sprint<br>
         MOUSE = Look around<br>
         E = Interact / Gather / Build / Attack<br>
-        Q = Switch to White Sword<br>
-        1 = Foundation, 2 = Wall, 3 = Roof, 4 = Crafting Bench<br>
-        ESC = Pause
+        Q = White Sword<br>
+        1 = Foundation, 2 = Wall, 3 = Roof, 4 = Bench<br>
+        ESC = Clear Build Mode
       </div>
     </div>
   </div>
@@ -373,10 +348,10 @@
 
     const { createClient } = supabase;
 
-    const SUPABASE_URL = 'https://clbjiyokjmovijgwybyu.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsYmppeW9ram1vdmlqZ3d5Ynl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNTQyMzEsImV4cCI6MjA5MDgzMDIzMX0.EY8uZZN8hEyncJoi-rswxnKeaeIBTuF_xkwBu-yvF7c';
-
-    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = createClient(
+      'https://clbjiyokjmovijgwybyu.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsYmppeW9ram1vdmlqZ3d5Ynl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNTQyMzEsImV4cCI6MjA5MDgzMDIzMX0.EY8uZZN8hEyncJoi-rswxnKeaeIBTuF_xkwBu-yvF7c'
+    );
 
     const SAVE_KEY = 'arrakis_save_v2';
     const ROOM = 'arrakis_room';
@@ -386,8 +361,8 @@
     let scene, camera, renderer, controls;
     let raycaster, clickRaycaster;
     let terrain, terrainGeo;
+
     const objects = [];
-    const interactables = [];
     const structures = [];
     const placedFoundations = new Map();
     const placedWalls = new Map();
@@ -416,7 +391,6 @@
     let equippedWeapon = 'hands';
     let buildMode = null;
     let buildPreview = null;
-    let buildingGhost = null;
 
     let wormState = 'idle';
     let wormTimer = 0;
@@ -431,8 +405,7 @@
 
     const world = {
       terrainSize: 8000,
-      terrainSegments: 220,
-      worldScale: 4
+      terrainSegments: 220
     };
 
     const buildingCosts = {
@@ -451,15 +424,19 @@
     animate();
 
     function saveGame() {
-      const data = {
-        spiceScore, water, health, wood, stone, fabric, electronics, hasStillsuit, equippedWeapon,
-        player: {
-          x: camera.position.x, y: camera.position.y, z: camera.position.z, rotY: camera.rotation.y
-        },
-        structures: serializeStructures()
-      };
-      localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-      flashSave();
+      try {
+        const data = {
+          spiceScore, water, health, wood, stone, fabric, electronics, hasStillsuit, equippedWeapon,
+          player: {
+            x: camera.position.x,
+            y: camera.position.y,
+            z: camera.position.z,
+            rotY: camera.rotation.y
+          }
+        };
+        localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+        flashSave();
+      } catch {}
     }
 
     function loadGame() {
@@ -488,6 +465,12 @@
       el.style.display = 'block';
       clearTimeout(flashSave._t);
       flashSave._t = setTimeout(() => el.style.display = 'none', 700);
+    }
+
+    function terrainHeightAt(x, z) {
+      return Math.sin(x / 120) * Math.cos(z / 120) * 35 +
+             Math.sin(x / 500) * Math.cos(z / 500) * 90 +
+             Math.sin((x + z) / 250) * 20;
     }
 
     function updateHUD() {
@@ -596,7 +579,11 @@
         metalness: 1,
         roughness: 0.1
       });
-      const hiltMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 1, roughness: 0.4 });
+      const hiltMat = new THREE.MeshStandardMaterial({
+        color: 0x222222,
+        metalness: 1,
+        roughness: 0.4
+      });
 
       const blade = new THREE.Mesh(new THREE.BoxGeometry(0.2, 7, 0.5), bladeMat);
       blade.position.y = 4.5;
@@ -632,10 +619,9 @@
       controls = new PointerLockControls(camera, document.body);
       scene.add(controls.getObject());
 
-      const blocker = document.getElementById('blocker');
-      blocker.addEventListener('click', () => controls.lock());
-      controls.addEventListener('lock', () => blocker.style.display = 'none');
-      controls.addEventListener('unlock', () => blocker.style.display = 'flex');
+      document.getElementById('blocker').addEventListener('click', () => controls.lock());
+      controls.addEventListener('lock', () => document.getElementById('blocker').style.display = 'none');
+      controls.addEventListener('unlock', () => document.getElementById('blocker').style.display = 'flex');
 
       document.addEventListener('keydown', onKeyDown);
       document.addEventListener('keyup', onKeyUp);
@@ -684,16 +670,14 @@
       }
       terrainGeo.computeVertexNormals();
 
-      const material = new THREE.MeshLambertMaterial({ color: 0xd4a373 });
-      terrain = new THREE.Mesh(terrainGeo, material);
+      terrain = new THREE.Mesh(terrainGeo, new THREE.MeshLambertMaterial({ color: 0xd4a373 }));
       scene.add(terrain);
       objects.push(terrain);
     }
 
     function buildSpice() {
-      const particleCount = 12000;
       const geo = new THREE.BufferGeometry();
-      const arr = new Float32Array(particleCount * 3);
+      const arr = new Float32Array(12000 * 3);
       for (let i = 0; i < arr.length; i += 3) {
         arr[i] = (Math.random() - 0.5) * 4000;
         arr[i + 1] = Math.random() * 80;
@@ -729,8 +713,7 @@
       }
 
       const sparkleGeo = new THREE.BufferGeometry();
-      const sparkleCount = 12000;
-      const sparklePos = new Float32Array(sparkleCount * 3);
+      const sparklePos = new Float32Array(12000 * 3);
       for (let i = 0; i < sparklePos.length; i++) sparklePos[i] = (Math.random() - 0.5) * 4000;
       sparkleGeo.setAttribute('position', new THREE.BufferAttribute(sparklePos, 3));
       sparkleSystem = new THREE.Points(
@@ -778,8 +761,7 @@
 
     function createSandworm() {
       sandworm = new THREE.Group();
-      const segmentCount = 22;
-      for (let i = 0; i < segmentCount; i++) {
+      for (let i = 0; i < 22; i++) {
         const radius = 15 - i * 0.45;
         const seg = new THREE.Mesh(
           new THREE.TorusGeometry(radius, 4, 8, 16),
@@ -815,7 +797,6 @@
           mesh: createHumanMesh(0x8a3b2c),
           health: 60,
           speed: 18 + Math.random() * 8,
-          target: new THREE.Vector3(),
           attackTimer: 0
         };
         const x = (Math.random() - 0.5) * 5000;
@@ -867,12 +848,11 @@
     }
 
     function createBuildPreview(mode) {
-      const color = 0xffffff;
-      let mesh;
-      if (mode === 'foundation') mesh = new THREE.Mesh(new THREE.BoxGeometry(12, 2, 12), new THREE.MeshBasicMaterial({ color, wireframe: true }));
-      if (mode === 'wall') mesh = new THREE.Mesh(new THREE.BoxGeometry(12, 10, 1.5), new THREE.MeshBasicMaterial({ color, wireframe: true }));
-      if (mode === 'roof') mesh = new THREE.Mesh(new THREE.BoxGeometry(13, 2, 13), new THREE.MeshBasicMaterial({ color, wireframe: true }));
-      if (mode === 'bench') mesh = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 4), new THREE.MeshBasicMaterial({ color, wireframe: true }));
+      let mesh = null;
+      if (mode === 'foundation') mesh = new THREE.Mesh(new THREE.BoxGeometry(12, 2, 12), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true }));
+      if (mode === 'wall') mesh = new THREE.Mesh(new THREE.BoxGeometry(12, 10, 1.5), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true }));
+      if (mode === 'roof') mesh = new THREE.Mesh(new THREE.BoxGeometry(13, 2, 13), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true }));
+      if (mode === 'bench') mesh = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 4), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true }));
       if (!mesh) return;
       buildPreview = mesh;
       scene.add(buildPreview);
@@ -904,72 +884,8 @@
       saveGame();
     }
 
-    function terrainHeightAt(x, z) {
-      return Math.sin(x / 120) * Math.cos(z / 120) * 35 + Math.sin(x / 500) * Math.cos(z / 500) * 90 + Math.sin((x + z) / 250) * 20;
-    }
-
     function keyForGrid(x, z) {
       return `${Math.round(x / 12) * 12}_${Math.round(z / 12) * 12}`;
-    }
-
-    function serializeStructures() {
-      return structures.map(s => ({
-        type: s.type,
-        x: s.mesh.position.x,
-        y: s.mesh.position.y,
-        z: s.mesh.position.z,
-        rotY: s.mesh.rotation.y
-      }));
-    }
-
-    function placeStructure(type, x, y, z, free = false) {
-      if (!free && !canPlaceStructure(type, x, z)) return false;
-
-      const key = keyForGrid(x, z);
-      if (!free) {
-        const costs = buildingCosts[type];
-        if (!spendMaterials(costs)) return false;
-      }
-
-      let mesh;
-      if (type === 'foundation') {
-        mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(12, 2, 12),
-          new THREE.MeshStandardMaterial({ color: 0x7c5b39, roughness: 1 })
-        );
-        mesh.position.set(x, y + 1, z);
-        placedFoundations.set(key, true);
-      } else if (type === 'wall') {
-        mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(12, 10, 1.5),
-          new THREE.MeshStandardMaterial({ color: 0x8f6a45, roughness: 1 })
-        );
-        mesh.position.set(x, y + 6, z);
-        placedWalls.set(key, true);
-      } else if (type === 'roof') {
-        mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(13, 2, 13),
-          new THREE.MeshStandardMaterial({ color: 0x6f4b2e, roughness: 1 })
-        );
-        mesh.position.set(x, y + 11, z);
-        placedRoofs.set(key, true);
-      } else if (type === 'bench') {
-        mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(6, 4, 4),
-          new THREE.MeshStandardMaterial({ color: 0x4a3422, roughness: 1 })
-        );
-        mesh.position.set(x, y + 2, z);
-        craftingBenches.push(mesh);
-      } else {
-        return false;
-      }
-
-      mesh.rotation.y = 0;
-      scene.add(mesh);
-      structures.push({ type, mesh });
-      objects.push(mesh);
-      saveGame();
-      return true;
     }
 
     function spendMaterials(costs) {
@@ -992,6 +908,47 @@
 
     function isOccupied(x, z) {
       return structures.some(s => s.mesh.position.distanceTo(new THREE.Vector3(x, s.mesh.position.y, z)) < 4);
+    }
+
+    function placeStructure(type, x, y, z, free = false) {
+      if (!free && !canPlaceStructure(type, x, z)) return false;
+      if (!free && !spendMaterials(buildingCosts[type])) return false;
+
+      let mesh = null;
+      const key = keyForGrid(x, z);
+
+      if (type === 'foundation') {
+        mesh = new THREE.Mesh(new THREE.BoxGeometry(12, 2, 12), new THREE.MeshStandardMaterial({ color: 0x7c5b39, roughness: 1 }));
+        mesh.position.set(x, y + 1, z);
+        placedFoundations.set(key, true);
+      } else if (type === 'wall') {
+        mesh = new THREE.Mesh(new THREE.BoxGeometry(12, 10, 1.5), new THREE.MeshStandardMaterial({ color: 0x8f6a45, roughness: 1 }));
+        mesh.position.set(x, y + 6, z);
+        placedWalls.set(key, true);
+      } else if (type === 'roof') {
+        mesh = new THREE.Mesh(new THREE.BoxGeometry(13, 2, 13), new THREE.MeshStandardMaterial({ color: 0x6f4b2e, roughness: 1 }));
+        mesh.position.set(x, y + 11, z);
+        placedRoofs.set(key, true);
+      } else if (type === 'bench') {
+        mesh = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 4), new THREE.MeshStandardMaterial({ color: 0x4a3422, roughness: 1 }));
+        mesh.position.set(x, y + 2, z);
+        craftingBenches.push(mesh);
+      } else {
+        return false;
+      }
+
+      mesh.rotation.y = 0;
+      scene.add(mesh);
+      structures.push({ type, mesh });
+      objects.push(mesh);
+      saveGame();
+      return true;
+    }
+
+    function getCrosshairGroundPoint() {
+      clickRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+      const hits = clickRaycaster.intersectObject(terrain);
+      return hits.length ? hits[0].point : null;
     }
 
     function onKeyDown(event) {
@@ -1037,21 +994,16 @@
       else collectWithHands();
     }
 
-    function tryBuildAtCrosshair() {
-      const point = getCrosshairGroundPoint();
-      if (!point) return;
-      const x = Math.round(point.x / 12) * 12;
-      const z = Math.round(point.z / 12) * 12;
-      const y = terrainHeightAt(x, z);
-      const success = placeStructure(buildMode, x, y, z);
-      if (success) updateHUD();
-    }
-
-    function getCrosshairGroundPoint() {
-      clickRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-      const intersects = clickRaycaster.intersectObject(terrain);
-      if (!intersects.length) return null;
-      return intersects[0].point;
+    function collectWithHands() {
+      const hits = interactablesRaycast();
+      if (!hits.length) return;
+      const obj = hits[0].object;
+      if (spiceCrystals.includes(obj) && obj.visible) {
+        obj.visible = false;
+        spiceScore += 50;
+        updateHUD();
+        saveGame();
+      }
     }
 
     function attackWithSword() {
@@ -1075,14 +1027,6 @@
         }
       });
 
-      otherPlayers.forEach((p) => {
-        if (!p.mesh) return;
-        const dist = p.mesh.position.distanceTo(origin);
-        if (dist <= sword.range) {
-          p.health = Math.max(0, (p.health || 100) - 10);
-        }
-      });
-
       if (hit) {
         document.getElementById('combat-warning').style.display = 'block';
         clearTimeout(attackWithSword._t);
@@ -1092,37 +1036,31 @@
       }
     }
 
-    function collectWithHands() {
-      const intersects = clickRaycaster.intersectObjects(spiceCrystals, false);
-      if (intersects.length > 0) {
-        const target = intersects[0].object;
-        if (target.visible) {
-          target.visible = false;
-          spiceScore += 50;
-          updateHUD();
-          saveGame();
-        }
-      }
+    function tryBuildAtCrosshair() {
+      const point = getCrosshairGroundPoint();
+      if (!point || !buildMode) return;
+      const x = Math.round(point.x / 12) * 12;
+      const z = Math.round(point.z / 12) * 12;
+      const y = terrainHeightAt(x, z);
+      placeStructure(buildMode, x, y, z);
+      updateHUD();
     }
 
     function interact() {
-      if (tryCraftStillsuit()) return;
-      if (tryPickUpNearbyResource()) return;
-      if (buildMode) tryBuildAtCrosshair();
-    }
-
-    function tryPickUpNearbyResource() {
-      const p = camera.position;
-      const nearBench = craftingBenches.some(b => b.position.distanceTo(p) < 8);
-      if (nearBench && wood >= 1 && fabric >= 1 && !hasStillsuit) {
-        return false;
+      if (tryCraftFromBench()) return;
+      if (buildMode) {
+        tryBuildAtCrosshair();
+        return;
       }
-      return false;
+      collectWithHands();
     }
 
-    function tryCraftStillsuit() {
-      const nearBench = craftingBenches.some(b => b.position.distanceTo(camera.position) < 10);
-      if (!nearBench) return false;
+    function isInteractingNearBench() {
+      return craftingBenches.some(b => b.position.distanceTo(camera.position) < 10);
+    }
+
+    function tryCraftFromBench() {
+      if (!isInteractingNearBench()) return false;
       if (hasStillsuit) return false;
       if (wood >= 2 && fabric >= 2 && electronics >= 1) {
         wood -= 2;
@@ -1154,6 +1092,11 @@
       saveGame();
     }
 
+    function interactablesRaycast() {
+      clickRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+      return clickRaycaster.intersectObjects([...spiceCrystals, ...structures.map(s => s.mesh)], false);
+    }
+
     function onWindowResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -1177,6 +1120,7 @@
             entries.forEach(p => {
               if (!p.id || p.id === myId) return;
               seen.add(p.id);
+
               if (!otherPlayers.has(p.id)) {
                 const mesh = createHumanMesh(0x6f4d3c);
                 scene.add(mesh);
@@ -1190,6 +1134,7 @@
                   name: p.name ?? 'Player'
                 });
               }
+
               const data = otherPlayers.get(p.id);
               data.targetPos.set(p.x ?? 0, p.y ?? 10, p.z ?? 0);
               data.targetRot = p.rot ?? 0;
@@ -1212,6 +1157,7 @@
         })
         .on('broadcast', { event: 'move' }, ({ payload }) => {
           if (!payload || payload.id === myId) return;
+
           if (!otherPlayers.has(payload.id)) {
             const mesh = createHumanMesh(0x6f4d3c);
             scene.add(mesh);
@@ -1225,6 +1171,7 @@
               name: payload.name || 'Player'
             });
           }
+
           const data = otherPlayers.get(payload.id);
           data.targetPos.set(payload.pos.x, payload.pos.y, payload.pos.z);
           data.targetRot = payload.rot;
@@ -1261,6 +1208,7 @@
 
     async function syncPresence() {
       if (!presenceChannel || !controls.isLocked) return;
+
       await presenceChannel.track({
         id: myId,
         name: playerName,
@@ -1390,13 +1338,19 @@
       });
     }
 
-    function interactablesRaycast() {
-      clickRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-      return clickRaycaster.intersectObjects([...spiceCrystals, ...structures.map(s => s.mesh)], false);
+    function syncBuildPreview() {
+      if (!buildPreview || !controls.isLocked) return;
+      const point = getCrosshairGroundPoint();
+      if (!point) return;
+      const x = Math.round(point.x / 12) * 12;
+      const z = Math.round(point.z / 12) * 12;
+      const y = terrainHeightAt(x, z);
+      buildPreview.position.set(x, y, z);
     }
 
     function animate() {
       requestAnimationFrame(animate);
+
       const time = performance.now();
       const delta = Math.min((time - prevTime) / 1000, 0.1);
 
@@ -1464,75 +1418,6 @@
 
       renderer.render(scene, camera);
       prevTime = time;
-    }
-
-    function syncBuildPreview() {
-      if (!buildPreview || !controls.isLocked) return;
-      const point = getCrosshairGroundPoint();
-      if (!point) return;
-      const x = Math.round(point.x / 12) * 12;
-      const z = Math.round(point.z / 12) * 12;
-      const y = terrainHeightAt(x, z);
-      buildPreview.position.set(x, y, z);
-      buildPreview.rotation.y = 0;
-    }
-
-    function isInteractingNearBench() {
-      return craftingBenches.some(b => b.position.distanceTo(camera.position) < 10);
-    }
-
-    function tryCraftFromBench() {
-      if (!isInteractingNearBench()) return false;
-      if (!hasStillsuit && wood >= 2 && fabric >= 2 && electronics >= 1) {
-        wood -= 2;
-        fabric -= 2;
-        electronics -= 1;
-        hasStillsuit = true;
-        water = Math.min(100, water + 20);
-        saveGame();
-        updateHUD();
-        return true;
-      }
-      return false;
-    }
-
-    /*function interact() {
-      if (tryCraftFromBench()) return;
-      if (buildMode) {
-        tryBuildAtCrosshair();
-        return;
-      }
-      const hits = interactablesRaycast();
-      if (hits.length > 0) {
-        const obj = hits[0].object;
-        if (spiceCrystals.includes(obj) && obj.visible) {
-          obj.visible = false;
-          spiceScore += 50;
-          updateHUD();
-          saveGame();
-        }
-      }
-    }*/
-
-    function buildStructureAtCrosshair() {
-      const point = getCrosshairGroundPoint();
-      if (!point || !buildMode) return;
-      const x = Math.round(point.x / 12) * 12;
-      const z = Math.round(point.z / 12) * 12;
-      const y = terrainHeightAt(x, z);
-      placeStructure(buildMode, x, y, z);
-      updateHUD();
-    }
-
-    function tryBuildAtCrosshair() {
-      buildStructureAtCrosshair();
-    }
-
-    function spendMelange(amount) {
-      if (spiceScore < amount) return false;
-      spiceScore -= amount;
-      updateHUD();
-      return true;
     }
   </script>
 </body>
