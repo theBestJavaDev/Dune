@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dune: Arrakis First-Person Survival</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
@@ -250,6 +250,7 @@
   </style>
 </head>
 <body>
+
   <div id="ui-layer">
     <div id="crosshair"></div>
     <div id="hud"></div>
@@ -376,7 +377,6 @@
     let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, moveShift = false;
     let canJump = false;
     let prevTime = performance.now();
-
     const velocity = new THREE.Vector3();
     const direction = new THREE.Vector3();
 
@@ -483,7 +483,8 @@
         `Weapon: ${equippedWeapon === 'sword' ? 'All White Sword' : 'Hands'}<br>` +
         `Build: ${buildMode ? buildMode : 'None'}`;
 
-      document.getElementById('spice-score').innerText = Math.floor(spiceScore);
+      document.getElementById('spice-score').innerText = Math.floor
+            document.getElementById('spice-score').innerText = Math.floor(spiceScore);
       document.getElementById('water-score').innerText = Math.floor(water);
       document.getElementById('health-score').innerText = Math.floor(health);
       document.getElementById('wood-score').innerText = wood;
@@ -888,7 +889,7 @@
       return `${Math.round(x / 12) * 12}_${Math.round(z / 12) * 12}`;
     }
 
-    function spendMaterials(costs) {
+        function spendMaterials(costs) {
       if ((wood < (costs.wood || 0)) || (stone < (costs.stone || 0)) || (electronics < (costs.electronics || 0))) return false;
       wood -= costs.wood || 0;
       stone -= costs.stone || 0;
@@ -987,7 +988,7 @@
     function onMouseDown() {
       if (!controls.isLocked) return;
       if (buildMode) {
-        tryBuildAtCrosshair();
+        placeBuildAtCrosshair();
         return;
       }
       if (equippedWeapon === 'sword') attackWithSword();
@@ -1039,13 +1040,13 @@
     function interact() {
       if (tryCraftFromBench()) return;
       if (buildMode) {
-        tryBuildAtCrosshair();
+        placeBuildAtCrosshair();
         return;
       }
       collectWithHands();
     }
 
-    function tryBuildAtCrosshair() {
+    function placeBuildAtCrosshair() {
       const point = getCrosshairGroundPoint();
       if (!point || !buildMode) return;
       const x = Math.round(point.x / 12) * 12;
@@ -1361,8 +1362,7 @@
           if (positions[i] > 1000) positions[i] = -1000;
         }
         spiceParticles.geometry.attributes.position.needsUpdate = true;
-
-        sparkleSystem.rotation.y += 0.001;
+                sparkleSystem.rotation.y += 0.001;
         sparkleSystem.material.opacity = 0.3 + Math.sin(time * 0.005) * 0.2;
 
         velocity.x -= velocity.x * 10.0 * delta;
@@ -1422,3 +1422,6 @@
   </script>
 </body>
 </html>
+       
+
+    
