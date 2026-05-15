@@ -209,6 +209,7 @@
       border-radius: 3px;
       cursor: pointer;
       box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+      pointer-events: auto;
     }
 
     #btn-toggle-build { left: 10px; }
@@ -362,7 +363,7 @@
       <div class="instructions">
 First‑person survival on the desert planet<br><br>
 W, A, S, D  = Move<br>
-SHAFT      = Sprint / Sandwalk<br>
+SHIFT      = Sprint / Sandwalk<br>
 SPACE      = Jump<br>
 MOUSE      = Look around<br>
 E          = Interact / Build / Attack<br>
@@ -894,9 +895,7 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
     function updateHudElements() {
       const hud = document.getElementById('hud');
       if (!hud) return;
-
       const online = 1 + otherPlayers.size;
-
       hud.innerHTML =
         `Location: Deep Desert<br>` +
         `Suit Status: ${health > 0 ? 'Optimal' : 'Critical'}<br>` +
@@ -915,7 +914,6 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
       const fa = document.getElementById('fabric-score');
       const el = document.getElementById('electronics-score');
       const sst = document.getElementById('watersuit-tag');
-
       if (ws) ws.innerText = Math.floor(water);
       if (hs) hs.innerText = Math.floor(health);
       if (wo) wo.innerText = wood;
@@ -929,7 +927,6 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
       const ml = document.getElementById('build-mode-label');
       const ms = document.getElementById('build-status');
       if (!ml || !ms) return;
-
       ml.innerText = buildMode ?? 'None';
       ms.innerText = buildMode ? `Placing ${buildMode} (${keyForBuildCosts()})` : 'Select a piece';
     }
@@ -943,7 +940,6 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
     function updateLeaderboard() {
       const list = document.getElementById('leaderboard-list');
       if (!list) return;
-
       const board = [
         { name: playerName, score: spiceScore, me: true },
         ...Array.from(otherPlayers.values()).map(p => ({
@@ -952,7 +948,6 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
           me: false
         }))
       ].sort((a, b) => b.score - a.score).slice(0, 12);
-
       list.innerHTML = board.map((p, i) =>
         `${i + 1}. ${p.name}${p.me ? ' (you)' : ''} – ${Math.floor(p.score)}`
       ).join('<br>');
@@ -972,7 +967,6 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
       const send = document.getElementById('chat-send');
       const input = document.getElementById('chat-input');
       if (!send || !input) return;
-
       send.onclick = sendChat;
       input.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
@@ -985,10 +979,8 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
     async function sendChat() {
       const input = document.getElementById('chat-input');
       if (!input || !chatChannel) return;
-
       const text = input.value.trim();
       if (!text) return;
-
       input.value = '';
       try {
         await chatChannel.send({
@@ -1001,6 +993,7 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
             ts: Date.now()
           }
         });
+        addChatLine(`${playerName}: ${text}`);
       } catch {}
     }
 
@@ -1069,28 +1062,22 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
       if (item === 'water' && spiceScore >= 10) {
         spiceScore -= 10;
         water = Math.min(100, water + 40);
-      }
-      else if (item === 'wood' && spiceScore >= 8) {
+      } else if (item === 'wood' && spiceScore >= 8) {
         spiceScore -= 8;
         wood += 3;
-      }
-      else if (item === 'stone' && spiceScore >= 10) {
+      } else if (item === 'stone' && spiceScore >= 10) {
         spiceScore -= 10;
         stone += 3;
-      }
-      else if (item === 'fabric' && spiceScore >= 12) {
+      } else if (item === 'fabric' && spiceScore >= 12) {
         spiceScore -= 12;
         fabric += 2;
-      }
-      else if (item === 'electronics' && spiceScore >= 18) {
+      } else if (item === 'electronics' && spiceScore >= 18) {
         spiceScore -= 18;
         electronics += 1;
-      }
-      else if (item === 'heal' && spiceScore >= 15) {
+      } else if (item === 'heal' && spiceScore >= 15) {
         spiceScore -= 15;
         health = Math.min(100, health + 35);
-      }
-      else {
+      } else {
         return;
       }
       updateHudElements();
@@ -1144,32 +1131,28 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
         );
         mesh.position.set(x, y + 1, z);
         placedFoundations.set(key, true);
-      }
-      else if (type === 'wall') {
+      } else if (type === 'wall') {
         mesh = new THREE.Mesh(
           new THREE.BoxGeometry(12, 10, 1.5),
           new THREE.MeshStandardMaterial({ color: 0x8f6a45, roughness: 1 })
         );
         mesh.position.set(x, y + 6, z);
         placedWalls.set(key, true);
-      }
-      else if (type === 'roof') {
+      } else if (type === 'roof') {
         mesh = new THREE.Mesh(
           new THREE.BoxGeometry(13, 2, 13),
           new THREE.MeshStandardMaterial({ color: 0x6f4b2e, roughness: 1 })
         );
         mesh.position.set(x, y + 11, z);
         placedRoofs.set(key, true);
-      }
-      else if (type === 'bench') {
+      } else if (type === 'bench') {
         mesh = new THREE.Mesh(
           new THREE.BoxGeometry(6, 4, 4),
           new THREE.MeshStandardMaterial({ color: 0x4a3422, roughness: 1 })
         );
         mesh.position.set(x, y + 2, z);
         craftingBenches.push(mesh);
-      }
-      else {
+      } else {
         return false;
       }
 
@@ -1187,34 +1170,25 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
       return hits.length ? hits[0].point : null;
     }
 
-    function interact() {
-      if (buildMode) {
-        placeBuildAtCrosshair();
-        return;
+    function interactablesRaycast() {
+      clickRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+      return clickRaycaster.intersectObjects([...spiceCrystals, ...structures.map(s => s.mesh)], false);
+    }
+
+    function collectWithHands() {
+      const hits = interactablesRaycast();
+      if (!hits.length) return;
+      const obj = hits[0].object;
+      if (spiceCrystals.includes(obj) && obj.visible) {
+        obj.visible = false;
+        spiceScore += 50;
+        updateHudElements();
+        saveGame();
       }
-      if (tryCraftFromBench()) return;
-      collectWithHands();
-    }
-
-    function placeBuildAtCrosshair() {
-      const point = getCrosshairGroundPoint();
-      if (!point || !buildMode) return;
-      const x = Math.round(point.x / 12) * 12;
-      const z = Math.round(point.z / 12) * 12;
-      const y = terrainHeightAt(x, z);
-      placeStructure(buildMode, x, y, z);
-      updateHudMode();
-      updateHudElements();
-    }
-
-    function isInteractingNearBench() {
-      return craftingBenches.some(
-        b => b.position.distanceTo(camera.position) < 14
-      );
     }
 
     function tryCraftFromBench() {
-      if (!isInteractingNearBench()) return false;
+      if (!craftingBenches.some(b => b.position.distanceTo(camera.position) < 14)) return false;
       if (hasStillsuit) return false;
       if (wood >= 2 && fabric >= 2 && electronics >= 1) {
         wood -= 2;
@@ -1230,16 +1204,24 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
       return false;
     }
 
-    function collectWithHands() {
-      const hits = interactablesRaycast();
-      if (!hits.length) return;
-      const obj = hits[0].object;
-      if (spiceCrystals.includes(obj) && obj.visible) {
-        obj.visible = false;
-        spiceScore += 50;
-        updateHudElements();
-        saveGame();
+    function placeBuildAtCrosshair() {
+      const point = getCrosshairGroundPoint();
+      if (!point || !buildMode) return;
+      const x = Math.round(point.x / 12) * 12;
+      const z = Math.round(point.z / 12) * 12;
+      const y = terrainHeightAt(x, z);
+      placeStructure(buildMode, x, y, z);
+      updateHudMode();
+      updateHudElements();
+    }
+
+    function interact() {
+      if (buildMode) {
+        placeBuildAtCrosshair();
+        return;
       }
+      if (tryCraftFromBench()) return;
+      collectWithHands();
     }
 
     function attackWithSword() {
@@ -1297,11 +1279,6 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
       saveGame();
     }
 
-    function interactablesRaycast() {
-      clickRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-      return clickRaycaster.intersectObjects([...spiceCrystals, ...structures.map(s => s.mesh)], false);
-    }
-
     function syncBuildPreview() {
       if (!buildPreview || !controls.isLocked) return;
       const point = getCrosshairGroundPoint();
@@ -1317,21 +1294,13 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
       const phaseSec = DAY_DURATION_SEC;
       dayNightT = elapsedSec % phaseSec;
       dayNightPhase = dayNightT / phaseSec;
-
       const isNight = dayNightPhase > 0.25 && dayNightPhase < 0.75;
 
       const sky = isNight
         ? world.dayNight.nightSky
         : world.dayNight.daySky.clone().lerp(new THREE.Color(0xe9d0a5), 0.15);
-
-      const fog = isNight
-        ? world.dayNight.nightFog
-        : world.dayNight.dayFog;
-
-      const amb = isNight
-        ? world.dayNight.nightAmb
-        : world.dayNight.dayAmb;
-
+      const fog = isNight ? world.dayNight.nightFog : world.dayNight.dayFog;
+      const amb = isNight ? world.dayNight.nightAmb : world.dayNight.dayAmb;
       const dir = isNight
         ? world.dayNight.nightDir
         : world.dayNight.dayDir.clone().lerp(new THREE.Color(0xf1d0a0), 0.1);
@@ -1342,10 +1311,11 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
       if (ambLight) ambLight.color.copy(amb);
       const dirLight = scene.getObjectByName('dirLight');
       if (dirLight) dirLight.color.copy(dir);
-
-      const tint = isNight ? 0.85 : 0.7;
-      sparkleSystem.material.color.setHex(0xffcc88).multiplyScalar(tint);
-      sparkleSystem.material.opacity = isNight ? 0.75 : 0.55;
+      if (sparkleSystem) {
+        const tint = isNight ? 0.85 : 0.7;
+        sparkleSystem.material.color.setHex(0xffcc88).multiplyScalar(tint);
+        sparkleSystem.material.opacity = isNight ? 0.75 : 0.55;
+      }
     }
 
     function updateMinimap() {
@@ -1380,14 +1350,40 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
           `background:${player.isSandwalking ? '#ffc266' : '#ff6666'};` +
           'transform:translate(-50%,-50%);';
         dot.style.left = (cx + dx) + 'px';
-        dot.style.top  = (cy + dz) + 'px';
+        dot.style.top = (cy + dz) + 'px';
         grid.appendChild(dot);
       }
     }
 
+    function updateEnemyAI(delta) {
+      const p = controls.getObject().position;
+      for (const enemy of enemies) {
+        if (enemy.health <= 0) continue;
+        const d = enemy.mesh.position.distanceTo(p);
+        if (d < enemy.followDist) {
+          const dir = p.clone().sub(enemy.mesh.position).normalize();
+          enemy.mesh.position.addScaledVector(dir, enemy.speed * delta * 0.15);
+          enemy.mesh.lookAt(p);
+          if (d < enemy.closeAttack) {
+            health -= 0.2;
+            updateHudElements();
+          }
+        } else {
+          enemy.mesh.rotation.y += delta * 0.4;
+        }
+      }
+    }
+
+    function updateSandwalkCam(delta) {
+      if (!moveShift) return;
+      const t = performance.now() * 0.004;
+      camera.position.y += Math.sin(t) * 0.01;
+      camera.rotation.z = Math.sin(t * 0.8) * 0.01;
+    }
+
     function updateSandworm(delta, pPos, dY, onRock) {
       wormTimer += delta;
-
+      if (moveShift) return;
       if (wormState === 'idle' && wormTimer > 35 && Math.random() < 0.004) {
         wormState = 'wormsign';
         wormTimer = 0;
@@ -1406,147 +1402,231 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
       }
 
       if (wormState === 'wormsign') {
-        const dYOffset = 4;
-        camera.position.x += (random() - 0.5) * 0.9;
-        camera.position.y += (random() - 0.5) * 0.9;
-        const p = wormSignParticles.geometry.attributes.position.array;
-        for (let i = 0; i < p.length; i += 3) {
-          p[i]     = sandworm.position.x + (random() - 0.5) * 110;
-          p[i + 1] = dY + dYOffset + random() * 24;
-          p[i + 2] = sandworm.position.z + (random() - 0.5) * 110;
-        }
-        wormSignParticles.geometry.attributes.position.needsUpdate = true;
-        if (wormTimer > 8.5) {
-          wormState = 'attack';
-          wormTimer = 0;
-        }
-      }
-
-      if (wormState === 'attack') {
-        sandworm.lookAt(pPos.x, dY, pPos.z);
-        sandworm.position.lerp(
-          new THREE.Vector3(pPos.x, dY + 20, pPos.z),
-          0.04
-        );
-        if (sandworm.position.distanceTo(pPos) < 26 && !onRock) {
-          health -= 50;
-          water = 0;
-          updateHudElements();
-          updateHudResources();
-          if (health <= 0) {
-            setTimeout(() => location.reload(), 600);
-          }
-        }
-        if (wormTimer > 6) {
+        if (wormTimer > 10) {
           wormState = 'idle';
-          wormTimer = 0;
-          sandworm.position.y = -200;
           const el = document.getElementById('worm-warning');
           if (el) el.style.display = 'none';
-          const p = wormSignParticles.geometry.attributes.position.array;
-          p.fill(0);
-          wormSignParticles.geometry.attributes.position.needsUpdate = true;
         }
       }
     }
 
-    function updateMultiplayer(delta, time) {
-      otherPlayers.forEach(data => {
-        if (!data.mesh) return;
-        data.mesh.position.lerp(
-          new THREE.Vector3(data.targetPos.x, data.targetPos.y - 18, data.targetPos.z),
-          0.12
-        );
-        data.mesh.rotation.y = THREE.MathUtils.lerp(
-          data.mesh.rotation.y,
-          data.targetRot,
-          0.12
-        );
-        data.mesh.rotation.z = data.isSandwalking ? Math.sin(time * 0.0055) * 0.14 : 0;
-      });
-    }
+    async function initSupabase() {
+      try {
+        presenceChannel = supabaseClient.channel(`room:${ROOM}`, {
+          config: { presence: { key: myId } }
+        });
 
-    function updateEnemies(delta) {
-      const p = camera.position;
-      enemies.forEach(enemy => {
-        if (enemy.health <= 0) return;
-        const dir = p.clone().sub(enemy.mesh.position);
-        const dist = dir.length();
-        dir.normalize();
-        if (dist < enemy.followDist) {
-          enemy.mesh.position.addScaledVector(dir, enemy.speed * delta * 0.5);
-          enemy.mesh.lookAt(p);
-          if (dist < enemy.closeAttack && enemy.attackTimer <= 0) {
-            health -= 2.2;
-            enemy.attackTimer = 1.4;
+        presenceChannel.on('presence', { event: 'sync' }, () => {
+          const state = presenceChannel.presenceState();
+          for (const [id, entries] of Object.entries(state)) {
+            if (id === myId) continue;
+            const payload = entries[0];
+            let data = otherPlayers.get(id);
+            if (!data) {
+              const mesh = createHumanMesh(0x7b4f2d);
+              mesh.position.set(payload.x || 0, payload.y || 10, payload.z || 0);
+              scene.add(mesh);
+              data = {
+                id,
+                mesh,
+                targetPos: new THREE.Vector3(payload.x || 0, payload.y || 10, payload.z || 0),
+                targetRot: payload.rot || 0,
+                isSandwalking: !!payload.isSandwalking,
+                health: payload.health ?? 100,
+                melange: payload.melange ?? 0,
+                name: payload.name || `Fremen-${id.slice(0,4)}`
+              };
+              otherPlayers.set(id, data);
+            } else {
+              data.targetPos.set(payload.x || 0, payload.y || 10, payload.z || 0);
+              data.targetRot = payload.rot || 0;
+              data.isSandwalking = !!payload.isSandwalking;
+              data.health = payload.health ?? data.health;
+              data.melange = payload.melange ?? data.melange;
+              data.name = payload.name || data.name;
+            }
           }
+
+          for (const [id, data] of Array.from(otherPlayers.entries())) {
+            if (!state[id]) {
+              scene.remove(data.mesh);
+              otherPlayers.delete(id);
+            }
+          }
+          updateLeaderboard();
+        });
+
+        presenceChannel.on('broadcast', { event: 'move' }, ({ payload }) => {
+          if (!payload || payload.id === myId) return;
+          let data = otherPlayers.get(payload.id);
+          if (!data) {
+            const mesh = createHumanMesh(0x7b4f2d);
+            mesh.position.set(payload.pos.x, payload.pos.y, payload.pos.z);
+            scene.add(mesh);
+            data = {
+              id: payload.id,
+              mesh,
+              targetPos: new THREE.Vector3(payload.pos.x, payload.pos.y, payload.pos.z),
+              targetRot: payload.rot,
+              isSandwalking: payload.isSandwalking,
+              health: payload.health ?? 100,
+              melange: payload.melange ?? 0,
+              name: payload.name || `Fremen-${payload.id.slice(0,4)}`
+            };
+            otherPlayers.set(payload.id, data);
+          } else {
+            data.targetPos.set(payload.pos.x, payload.pos.y, payload.pos.z);
+            data.targetRot = payload.rot;
+            data.isSandwalking = payload.isSandwalking;
+            data.health = payload.health ?? data.health;
+            data.melange = payload.melange ?? data.melange;
+            data.name = payload.name ?? data.name;
+          }
+          updateLeaderboard();
+        });
+
+        presenceChannel.on('broadcast', { event: 'chat' }, ({ payload }) => {
+          if (!payload) return;
+          addChatLine(`${payload.name || 'Anonymous'}: ${payload.text}`);
+        });
+
+        await presenceChannel.subscribe(async status => {
+          if (status === 'SUBSCRIBED') {
+            await presenceChannel.track({
+              id: myId,
+              name: playerName,
+              x: camera.position.x,
+              y: camera.position.y,
+              z: camera.position.z,
+              rot: camera.rotation.y,
+              isSandwalking: moveShift,
+              health,
+              melange: spiceScore
+            });
+          }
+        });
+
+        chatChannel = presenceChannel;
+        setInterval(syncPresence, 120);
+      } catch {}
+    }
+
+    async function syncPresence() {
+      if (!presenceChannel || !controls.isLocked) return;
+      const myPos = new THREE.Vector3();
+      controls.getObject().getWorldPosition(myPos);
+      await presenceChannel.track({
+        id: myId,
+        name: playerName,
+        x: myPos.x,
+        y: myPos.y,
+        z: myPos.z,
+        rot: camera.rotation.y,
+        isSandwalking: moveShift,
+        health,
+        melange: spiceScore
+      });
+      try {
+        await presenceChannel.send({
+          type: 'broadcast',
+          event: 'move',
+          payload: {
+            id: myId,
+            name: playerName,
+            pos: { x: myPos.x, y: myPos.y, z: myPos.z },
+            rot: camera.rotation.y,
+            isSandwalking: moveShift,
+            health,
+            melange: spiceScore
+          }
+        });
+      } catch {}
+    }
+
+    function initUI() {
+      const buildBtn = document.getElementById('btn-toggle-build');
+      const guildBtn = document.getElementById('btn-toggle-guild');
+      const leaderBtn = document.getElementById('btn-toggle-leaderboard');
+      const buildDrop = document.getElementById('dropdown-build');
+      const guildDrop = document.getElementById('dropdown-guild');
+      const leaderDrop = document.getElementById('dropdown-leaderboard');
+
+      function closeAll() {
+        buildDrop.classList.remove('active');
+        guildDrop.classList.remove('active');
+        leaderDrop.classList.remove('active');
+        if (!controls.isLocked) return;
+      }
+
+      buildBtn.onclick = () => {
+        buildDrop.classList.toggle('active');
+        guildDrop.classList.remove('active');
+        leaderDrop.classList.remove('active');
+        if (controls.isLocked) controls.unlock();
+      };
+
+      guildBtn.onclick = () => {
+        guildDrop.classList.toggle('active');
+        buildDrop.classList.remove('active');
+        leaderDrop.classList.remove('active');
+        if (controls.isLocked) controls.unlock();
+      };
+
+      leaderBtn.onclick = () => {
+        leaderDrop.classList.toggle('active');
+        buildDrop.classList.remove('active');
+        guildDrop.classList.remove('active');
+        if (controls.isLocked) controls.unlock();
+      };
+
+      document.getElementById('mode-foundation').onclick = () => setBuildMode('foundation');
+      document.getElementById('mode-wall').onclick = () => setBuildMode('wall');
+      document.getElementById('mode-roof').onclick = () => setBuildMode('roof');
+      document.getElementById('mode-bench').onclick = () => setBuildMode('bench');
+      document.getElementById('mode-cancel').onclick = () => setBuildMode(null);
+      document.getElementById('weapon-none').onclick = () => setWeapon('hands');
+      document.getElementById('weapon-sword').onclick = () => setWeapon('sword');
+
+      document.getElementById('buy-water').onclick = () => buyResource('water');
+      document.getElementById('buy-wood').onclick = () => buyResource('wood');
+      document.getElementById('buy-stone').onclick = () => buyResource('stone');
+      document.getElementById('buy-fabric').onclick = () => buyResource('fabric');
+      document.getElementById('buy-electronics').onclick = () => buyResource('electronics');
+      document.getElementById('buy-heal').onclick = () => buyResource('heal');
+
+      document.addEventListener('keydown', e => {
+        if (e.key === 'ArrowDown') {
+          buildDrop.classList.add('active');
+          guildDrop.classList.remove('active');
+          leaderDrop.classList.remove('active');
+          controls.unlock();
         }
-        if (enemy.attackTimer > 0) {
-          enemy.attackTimer -= delta;
+        if (e.key === 'ArrowUp') {
+          closeAll();
+          controls.lock();
+        }
+        if (e.key === 'l' || e.key === 'L') {
+          setBuildMode(null);
         }
       });
     }
 
-    function openDropdown(id) {
-      const el = document.getElementById(id);
-      if (el) el.classList.add('active');
-    }
-
-    function closeDropdown(id) {
-      const el = document.getElementById(id);
-      if (el) el.classList.remove('active');
-    }
-
-    function closeAllDropdowns() {
-      closeDropdown('dropdown-build');
-      closeDropdown('dropdown-guild');
-      closeDropdown('dropdown-leaderboard');
-    }
-
-    function openAllDropdowns() {
-      openDropdown('dropdown-build');
-      openDropdown('dropdown-guild');
-      openDropdown('dropdown-leaderboard');
-    }
-
-    function unlockMouseForUI() {
-      if (controls && controls.isLocked) controls.unlock();
-    }
-
-    function onKeyDown(e) {
-      if (e.target !== document.body) return;
-      e.preventDefault();
-
-      switch (e.code) {
-        case 'ArrowDown':
-          openAllDropdowns();
-          unlockMouseForUI();
-          break;
-        case 'ArrowUp':
-          closeAllDropdowns();
-          break;
-        case 'KeyL':
-          setBuildMode(null);
-          closeAllDropdowns();
-          break;
-        case 'KeyW':
-          moveForward = true;
-          break;
-        case 'KeyS':
-          moveBackward = true;
-          break;
-        case 'KeyA':
-          moveLeft = true;
-          break;
-        case 'KeyD':
-          moveRight = true;
-          break;
+    function onKeyDown(event) {
+      switch (event.code) {
+        case 'KeyW': moveForward = true; break;
+        case 'KeyA': moveLeft = true; break;
+        case 'KeyS': moveBackward = true; break;
+        case 'KeyD': moveRight = true; break;
         case 'ShiftLeft':
+        case 'ShiftRight':
           moveShift = true;
           break;
         case 'Space':
           if (canJump) velocity.y += 350;
           canJump = false;
+          break;
+        case 'KeyE':
+          interact();
           break;
         case 'KeyQ':
           setWeapon(equippedWeapon === 'sword' ? 'hands' : 'sword');
@@ -1563,231 +1643,41 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
         case 'Digit4':
           setBuildMode('bench');
           break;
-        case 'KeyT': {
-          const input = document.getElementById('chat-input');
-          const chat = document.getElementById('chat-ui');
-          if (input && chat.style.display === 'none') {
-            chat.style.display = 'block';
-            input.focus();
-          } else if (input) {
-            input.blur();
-            chat.style.display = 'none';
-          }
-          break;
-        }
         case 'Escape':
           setBuildMode(null);
-          closeAllDropdowns();
+          break;
+        case 'KeyT':
+          const chat = document.getElementById('chat-ui');
+          if (chat) chat.style.display = chat.style.display === 'none' ? 'block' : 'none';
           break;
       }
     }
 
-    function onKeyUp(e) {
-      if (e.target !== document.body) return;
-      e.preventDefault();
-
-      switch (e.code) {
+    function onKeyUp(event) {
+      switch (event.code) {
         case 'KeyW': moveForward = false; break;
-        case 'KeyS': moveBackward = false; break;
         case 'KeyA': moveLeft = false; break;
+        case 'KeyS': moveBackward = false; break;
         case 'KeyD': moveRight = false; break;
-        case 'ShiftLeft': moveShift = false; break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          moveShift = false;
+          break;
       }
     }
 
-    function onMouseDown(e) {
+    function onMouseDown(event) {
+      if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+      if (event.button !== 0) return;
       if (!controls.isLocked) return;
-      e.preventDefault();
-
-      if (buildMode) {
-        placeBuildAtCrosshair();
-        return;
-      }
-
-      if (equippedWeapon === 'sword') {
-        attackWithSword();
-      } else {
-        collectWithHands();
-      }
+      if (equippedWeapon === 'sword') attackWithSword();
+      else interact();
     }
 
     function onWindowResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    function initUI() {
-      const btns = ['btn-toggle-build', 'btn-toggle-guild', 'btn-toggle-leaderboard'];
-      const dropdowns = ['dropdown-build', 'dropdown-guild', 'dropdown-leaderboard'];
-
-      for (let i = 0; i < btns.length; i++) {
-        const btn = document.getElementById(btns[i]);
-        const drop = document.getElementById(dropdowns[i]);
-        if (btn && drop) {
-          btn.addEventListener('click', () => {
-            drop.classList.toggle('active');
-          });
-        }
-      }
-
-      document.getElementById('mode-foundation')?.addEventListener('click', () => setBuildMode('foundation'));
-      document.getElementById('mode-wall')?.addEventListener('click', () => setBuildMode('wall'));
-      document.getElementById('mode-roof')?.addEventListener('click', () => setBuildMode('roof'));
-      document.getElementById('mode-bench')?.addEventListener('click', () => setBuildMode('bench'));
-      document.getElementById('mode-cancel')?.addEventListener('click', () => setBuildMode(null));
-
-      document.getElementById('weapon-none')?.addEventListener('click', () => setWeapon('hands'));
-      document.getElementById('weapon-sword')?.addEventListener('click', () => setWeapon('sword'));
-
-      document.getElementById('buy-water')?.addEventListener('click', () => buyResource('water'));
-      document.getElementById('buy-wood')?.addEventListener('click', () => buyResource('wood'));
-      document.getElementById('buy-stone')?.addEventListener('click', () => buyResource('stone'));
-      document.getElementById('buy-fabric')?.addEventListener('click', () => buyResource('fabric'));
-      document.getElementById('buy-electronics')?.addEventListener('click', () => buyResource('electronics'));
-      document.getElementById('buy-heal')?.addEventListener('click', () => buyResource('heal'));
-    }
-
-    function initSupabase() {
-      presenceChannel = supabaseClient.channel(ROOM, {
-        config: {
-          presence: { key: myId },
-          broadcast: { self: false }
-        }
-      });
-
-      presenceChannel
-        .on('presence', { event: 'sync' }, () => {
-          const state = presenceChannel.presenceState();
-          const seen = new Set();
-
-          for (const entries of Object.values(state)) {
-            for (const p of entries) {
-              if (!p.id || p.id === myId) continue;
-              seen.add(p.id);
-
-              if (!otherPlayers.has(p.id)) {
-                const mesh = createHumanMesh(0x6f4d3c);
-                scene.add(mesh);
-                otherPlayers.set(p.id, {
-                  mesh,
-                  targetPos: new THREE.Vector3(),
-                  targetRot: 0,
-                  isSandwalking: false,
-                  health: p.health ?? 100,
-                  melange: p.melange ?? 0,
-                  name: p.name ?? 'player_' + p.id
-                });
-              }
-
-              const data = otherPlayers.get(p.id);
-              data.targetPos.set(p.x ?? 0, p.y ?? 10, p.z ?? 0);
-              data.targetRot = p.rot ?? 0;
-              data.isSandwalking = !!p.isSandwalking;
-              data.health = p.health ?? 100;
-              data.melange = p.melange ?? 0;
-              data.name = p.name ?? data.name;
-            }
-          }
-
-          for (const [id, data] of otherPlayers) {
-            if (!seen.has(id)) {
-              if (data.mesh) scene.remove(data.mesh);
-              otherPlayers.delete(id);
-            }
-          }
-
-          updateHudElements();
-          updateHudResources();
-          updateLeaderboard();
-        })
-        .on('broadcast', { event: 'move' }, ({ payload }) => {
-          if (!payload || payload.id === myId) return;
-
-          if (!otherPlayers.has(payload.id)) {
-            const mesh = createHumanMesh(0x6f4d3c);
-            scene.add(mesh);
-            otherPlayers.set(payload.id, {
-              mesh,
-              targetPos: new THREE.Vector3(),
-              targetRot: 0,
-              isSandwalking: false,
-              health: 100,
-              melange: 0,
-              name: payload.name || 'player_' + payload.id
-            });
-          }
-
-          const data = otherPlayers.get(payload.id);
-          if (data) {
-            data.targetPos.set(payload.pos.x, payload.pos.y, payload.pos.z);
-            data.targetRot = payload.rot;
-            data.isSandwalking = payload.isSandwalking;
-            data.health = payload.health ?? data.health;
-            data.melange = payload.melange ?? data.melange;
-            data.name = payload.name ?? data.name;
-            updateLeaderboard();
-          }
-        })
-        .on('broadcast', { event: 'chat' }, ({ payload }) => {
-          if (!payload) return;
-          chatMessages.push(payload);
-          const name = payload.name || 'Anonymous';
-          addChatLine(`${name}: ${payload.text}`);
-        })
-        .subscribe(async status => {
-          if (status === 'SUBSCRIBED') {
-            await presenceChannel.track({
-              id: myId,
-              name: playerName,
-              x: camera.position.x,
-              y: camera.position.y,
-              z: camera.position.z,
-              rot: camera.rotation.y,
-              isSandwalking: moveShift,
-              health,
-              melange: spiceScore
-            });
-          }
-        });
-
-      chatChannel = presenceChannel;
-      setInterval(syncPresence, 100);
-    }
-
-    async function syncPresence() {
-      if (!presenceChannel || !controls.isLocked) return;
-
-      const myPos = new THREE.Vector3();
-      const myRot = new THREE.Euler();
-      controls.getObject().getWorldPosition(myPos);
-      controls.getObject().getWorldRotation(myRot);
-
-      await presenceChannel.track({
-        id: myId,
-        name: playerName,
-        x: myPos.x,
-        y: myPos.y,
-        z: myPos.z,
-        rot: myRot.y,
-        isSandwalking: moveShift,
-        health,
-        melange: spiceScore
-      });
-
-      await presenceChannel.send({
-        type: 'broadcast',
-        event: 'move',
-        payload: {
-          id: myId,
-          name: playerName,
-          pos: { x: myPos.x, y: myPos.y, z: myPos.z },
-          rot: myRot.y,
-          isSandwalking: moveShift,
-          health,
-          melange: spiceScore
-        }
-      });
     }
 
     function init() {
@@ -1857,7 +1747,6 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
 
     function animate() {
       requestAnimationFrame(animate);
-
       const time = performance.now();
       const delta = Math.min((time - prevTime) / 1000, 0.1);
 
@@ -1882,14 +1771,11 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
         direction.x = Number(moveRight) - Number(moveLeft);
         direction.normalize();
 
-        if (moveForward || moveBackward) {
-          velocity.z -= direction.z * 400.0 * delta;
-        }
-        if (moveLeft || moveRight) {
-          velocity.x -= direction.x * 400.0 * delta;
-        }
+        const moveSpeed = moveShift ? 240.0 : 400.0;
+        if (moveForward || moveBackward) velocity.z -= direction.z * moveSpeed * delta;
+        if (moveLeft || moveRight) velocity.x -= direction.x * moveSpeed * delta;
 
-        const speedFactor = moveShift ? 1.4 : 1;
+        const speedFactor = moveShift ? 0.65 : 1;
         controls.moveRight(-velocity.x * delta * speedFactor);
         controls.moveForward(-velocity.z * delta * speedFactor);
         controls.getObject().position.y += velocity.y * delta;
@@ -1922,14 +1808,18 @@ DROPDOWN BUTTONS above HUD toggle Build / Guild / Leaderboard
           canJump = true;
         }
 
-        updateEnemies(delta);
+        updateSandwalkCam(delta);
+        updateEnemyAI(delta);
         updateSandworm(delta, pPos, targetFloorHeight, onRock);
-        updateMultiplayer(delta, time);
         updateMinimap();
         syncBuildPreview();
         updateHudElements();
         updateHudResources();
         updateHudMode();
+        for (const p of otherPlayers.values()) {
+          p.mesh.position.lerp(p.targetPos, 0.12);
+          p.mesh.rotation.y += (p.targetRot - p.mesh.rotation.y) * 0.12;
+        }
       }
 
       renderer.render(scene, camera);
